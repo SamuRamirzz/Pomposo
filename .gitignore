@@ -1,0 +1,23 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# IDE
+.idea/
+
+# Bot runtime files
+backups/
+staging/
+google-credentials.json
+
+# Media
+*.mp3
+
+# System
+.DS_Store
+Thumbs.db

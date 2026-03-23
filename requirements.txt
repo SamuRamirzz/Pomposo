@@ -1,0 +1,15 @@
+aiohttp
+pytz
+mcstatus
+google-api-python-client
+fuzzywuzzy
+openai
+protobuf
+httpx
+discord.py
+python-dotenv
+python-Levenshtein
+google-genai
+google-cloud-texttospeech
+discord.py[voice]
+edge-tts
