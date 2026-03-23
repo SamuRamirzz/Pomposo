@@ -1,6 +1,8 @@
-# Secrets
+# Secrets & Dynamic Data
 .env
 /pomposo-terminal/.env
+bot_config.json
+bot_memory.txt
 
 # Python
 __pycache__/
