@@ -282,7 +282,16 @@ class AskCog(commands.Cog):
                 print(f"Error Ask: {e}")
                 import traceback
                 traceback.print_exc()
-                await ctx.send(f"ocurrio un error al intentar contactar con la IA... {e}")
+                # Enviar mensaje limpio al usuario
+                error_embed = discord.Embed(
+                    title="❌ Error de IA",
+                    description=f"No pude contactar con la IA.",
+                    color=discord.Color.red()
+                )
+                error_embed.set_footer(text="El sistema de auto-reparación ha sido notificado.")
+                await ctx.send(embed=error_embed)
+                # Re-lanzar para que on_command_error active el auto-diagnóstico
+                raise commands.CommandInvokeError(e)
 
 
 async def setup(bot):

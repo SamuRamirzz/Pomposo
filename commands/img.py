@@ -15,7 +15,7 @@ GOOGLE_CX_ID = os.getenv('GOOGLE_SEARCH_CX_ID')
 MAX_RESULTS = 20          # Resultados totales a obtener
 RESULTS_PER_PAGE = 10     # Máximo por request de la API
 URL_CHECK_TIMEOUT = 4     # Segundos para validar cada URL
-RANDOM_START_RANGE = 30   # Rango de randomización del start index
+RANDOM_START_RANGE = 10   # Rango de randomización del start index
 
 
 class ImageResult:
@@ -274,6 +274,26 @@ class ImageSearchCog(commands.Cog):
                 if page == 0:
                     raise ValueError(f"❌ Error de conexión: {str(e)}")
                 continue
+
+        # Fallback: si no hubo resultados con start aleatorio, reintentar desde el inicio
+        if not all_items and random_start > 1:
+            try:
+                params_fallback = {
+                    "key": GOOGLE_API_KEY,
+                    "cx": GOOGLE_CX_ID,
+                    "q": query,
+                    "searchType": "image",
+                    "num": RESULTS_PER_PAGE,
+                    "start": 1,
+                    "safe": safe_search,
+                    "filter": "1",
+                }
+                async with session.get("https://www.googleapis.com/customsearch/v1", params=params_fallback) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        all_items.extend(data.get("items", []))
+            except:
+                pass
 
         if not all_items:
             return []

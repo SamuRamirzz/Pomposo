@@ -1,5 +1,6 @@
 # Secrets
 .env
+/pomposo-terminal/.env
 
 # Python
 __pycache__/
