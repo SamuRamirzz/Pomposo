@@ -243,7 +243,7 @@ class AskCog(commands.Cog):
 
                 # 5. Ejecutar IA
                 chat = client.chats.create(
-                    model='gemini-3-flash-preview',
+                    model='gemini-2.0-flash',
                     config=types.GenerateContentConfig(
                         system_instruction=sys_prompt,
                         tools=tools,
