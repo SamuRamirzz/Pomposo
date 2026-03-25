@@ -21,10 +21,10 @@ class PomposoBrain:
 
         if self.api_key:
              self.client = genai.Client(api_key=self.api_key)
-             # GEMINI 2.0 FLASH (Estable)
-             self.model_name = 'gemini-2.5-flash'
+             # GEMINI 3.1 FLASH LITE
+             self.model_name = 'gemini-3.1-flash-lite-preview'
         else:
-            print("⚠️ ADVERTENCIA: No se encontró GOOGLE_API_KEY. La IA no funcionará correctamente.")
+            print(" ADVERTENCIA: No se encontró GOOGLE_API_KEY. La IA no funcionará correctamente.")
             self.client = None
 
     def _load_memory(self):
@@ -112,7 +112,7 @@ class PomposoBrain:
         search_context = ""
         # Heurístico simple para búsqueda: preguntas de 'quién', 'cuándo', 'qué pasó', 'noticias'
         if any(w in user_text_lower for w in ['quien', 'quién', 'cuando', 'cuándo', 'noticias', 'precio', 'clima', 'ganó']):
-             print(f"🔎 Detectado intento de búsqueda para: {user_text}")
+             print(f" Detectado intento de búsqueda para: {user_text}")
              search_results = self._google_search(user_text)
              if search_results:
                  search_context = f"\nINFORMACIÓN DE BÚSQUEDA RECIENTE (Google):\n{search_results}\nUsa esto para responder si es relevante."

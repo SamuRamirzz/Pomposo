@@ -7,7 +7,7 @@ import asyncio
 import random
 from typing import List, Optional
 
-# --- ⚙️ CONFIGURACIÓN ---
+# ---  CONFIGURACIÓN ---
 GOOGLE_API_KEY = os.getenv('GOOGLE_SEARCH_API_KEY')
 GOOGLE_CX_ID = os.getenv('GOOGLE_SEARCH_CX_ID')
 
@@ -42,7 +42,7 @@ class ImageNavigator(discord.ui.View):
 
         # Botón de link dinámico
         self.link_button = discord.ui.Button(
-            label="🔗 Abrir",
+            label=" Abrir",
             style=discord.ButtonStyle.link,
             url=images[0].url if images else "https://google.com"
         )
@@ -54,7 +54,7 @@ class ImageNavigator(discord.ui.View):
         if self.images and self.current_index < len(self.images):
             self.remove_item(self.link_button)
             self.link_button = discord.ui.Button(
-                label="🔗 Abrir",
+                label=" Abrir",
                 style=discord.ButtonStyle.link,
                 url=self.images[self.current_index].url
             )
@@ -70,7 +70,7 @@ class ImageNavigator(discord.ui.View):
         """Construye el embed con la imagen actual."""
         if not self.images or self.current_index >= len(self.images):
             return discord.Embed(
-                title="❌ Error",
+                title=" Error",
                 description="No hay imágenes disponibles.",
                 color=discord.Color.red()
             )
@@ -78,7 +78,7 @@ class ImageNavigator(discord.ui.View):
         img = self.images[self.current_index]
 
         embed = discord.Embed(
-            title=f"🔍 {self.query}",
+            title=f" {self.query}",
             description=img.title[:200] if img.title else None,
             color=discord.Color.blue()
         )
@@ -89,7 +89,7 @@ class ImageNavigator(discord.ui.View):
         # Fuente
         if img.context:
             embed.add_field(
-                name="📄 Fuente",
+                name=" Fuente",
                 value=f"[Ver página]({img.context})"[:1024],
                 inline=True
             )
@@ -97,14 +97,14 @@ class ImageNavigator(discord.ui.View):
         # Resolución si está disponible
         if img.width and img.height:
             embed.add_field(
-                name="📐 Resolución",
+                name=" Resolución",
                 value=f"{img.width}×{img.height}",
                 inline=True
             )
 
         # Footer con posición
         embed.set_footer(
-            text=f"Imagen {self.current_index + 1}/{len(self.images)} • ◀ ▶ para navegar"
+            text=f"Imagen {self.current_index + 1}/{len(self.images)} •   para navegar"
         )
 
         return embed
@@ -113,13 +113,13 @@ class ImageNavigator(discord.ui.View):
         """Solo el autor del comando puede usar los botones."""
         if interaction.user.id != self.author_id:
             await interaction.response.send_message(
-                "❌ Solo quien ejecutó el comando puede usar estos botones.",
+                " Solo quien ejecutó el comando puede usar estos botones.",
                 ephemeral=True
             )
             return False
         return True
 
-    @discord.ui.button(label="◀", style=discord.ButtonStyle.gray, custom_id="prev")
+    @discord.ui.button(label="", style=discord.ButtonStyle.gray, custom_id="prev")
     async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Ir a la imagen anterior."""
         if self.current_index > 0:
@@ -130,7 +130,7 @@ class ImageNavigator(discord.ui.View):
         else:
             await interaction.response.defer()
 
-    @discord.ui.button(label="▶", style=discord.ButtonStyle.blurple, custom_id="next")
+    @discord.ui.button(label="", style=discord.ButtonStyle.blurple, custom_id="next")
     async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Ir a la siguiente imagen."""
         if self.current_index < len(self.images) - 1:
@@ -141,7 +141,7 @@ class ImageNavigator(discord.ui.View):
         else:
             await interaction.response.defer()
 
-    @discord.ui.button(label="🔀", style=discord.ButtonStyle.gray, custom_id="shuffle")
+    @discord.ui.button(label="", style=discord.ButtonStyle.gray, custom_id="shuffle")
     async def shuffle_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Saltar a una imagen aleatoria."""
         if len(self.images) > 1:
@@ -155,7 +155,7 @@ class ImageNavigator(discord.ui.View):
         else:
             await interaction.response.defer()
 
-    @discord.ui.button(label="🗑️", style=discord.ButtonStyle.red, custom_id="delete")
+    @discord.ui.button(label="", style=discord.ButtonStyle.red, custom_id="delete")
     async def delete_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Eliminar el mensaje."""
         await interaction.message.delete()
@@ -213,7 +213,7 @@ class ImageSearchCog(commands.Cog):
         """
         if not GOOGLE_API_KEY or not GOOGLE_CX_ID:
             raise ValueError(
-                "❌ Faltan credenciales de Google Search API. Configura GOOGLE_SEARCH_API_KEY y GOOGLE_SEARCH_CX_ID")
+                " Faltan credenciales de Google Search API. Configura GOOGLE_SEARCH_API_KEY y GOOGLE_SEARCH_CX_ID")
 
         session = await self._get_session()
         all_items = []
@@ -245,7 +245,7 @@ class ImageSearchCog(commands.Cog):
             try:
                 async with session.get(url, params=params) as response:
                     if response.status == 403:
-                        raise ValueError("❌ API Key inválida o límite de cuota excedido.")
+                        raise ValueError(" API Key inválida o límite de cuota excedido.")
                     elif response.status == 400:
                         # Posible start index fuera de rango, intentar sin offset
                         if page == 0:
@@ -257,7 +257,7 @@ class ImageSearchCog(commands.Cog):
                         continue
                     elif response.status != 200:
                         if page == 0:
-                            raise ValueError(f"❌ Error de API: {response.status}")
+                            raise ValueError(f" Error de API: {response.status}")
                         continue
 
                     data = await response.json()
@@ -268,11 +268,11 @@ class ImageSearchCog(commands.Cog):
                 raise
             except asyncio.TimeoutError:
                 if page == 0:
-                    raise ValueError("❌ Google tardó mucho en responder. Intenta de nuevo.")
+                    raise ValueError(" Google tardó mucho en responder. Intenta de nuevo.")
                 continue
             except aiohttp.ClientError as e:
                 if page == 0:
-                    raise ValueError(f"❌ Error de conexión: {str(e)}")
+                    raise ValueError(f" Error de conexión: {str(e)}")
                 continue
 
         # Fallback: si no hubo resultados con start aleatorio, reintentar desde el inicio
@@ -354,7 +354,7 @@ class ImageSearchCog(commands.Cog):
 
         # Validar query
         if not query or len(query.strip()) == 0:
-            error_msg = "❌ Debes especificar qué buscar.\n**Ejemplo:** `¿img gatos programando`"
+            error_msg = " Debes especificar qué buscar.\n**Ejemplo:** `¿img gatos programando`"
             if is_interaction:
                 await context.followup.send(error_msg)
             else:
@@ -371,16 +371,16 @@ class ImageSearchCog(commands.Cog):
 
         # Mensaje de carga
         if is_interaction:
-            loading = await context.followup.send(f"🔍 Buscando imágenes de **{query}**...")
+            loading = await context.followup.send(f" Buscando imágenes de **{query}**...")
         else:
-            loading = await context.reply(f"🔍 Buscando imágenes de **{query}**...")
+            loading = await context.reply(f" Buscando imágenes de **{query}**...")
 
         # Realizar búsqueda
         try:
             images = await self.search_images(query, safe_search)
         except ValueError as e:
             error_embed = discord.Embed(
-                title="❌ Error en la búsqueda",
+                title=" Error en la búsqueda",
                 description=str(e),
                 color=discord.Color.red()
             )
@@ -388,7 +388,7 @@ class ImageSearchCog(commands.Cog):
             return
         except Exception as e:
             error_embed = discord.Embed(
-                title="❌ Error inesperado",
+                title=" Error inesperado",
                 description=f"Ocurrió un error: {str(e)[:300]}",
                 color=discord.Color.red()
             )
@@ -398,7 +398,7 @@ class ImageSearchCog(commands.Cog):
         # Sin resultados
         if not images:
             no_results = discord.Embed(
-                title="🔍 Sin resultados",
+                title=" Sin resultados",
                 description=f"No encontré imágenes para: **{query}**\n\nIntenta con otros términos.",
                 color=discord.Color.orange()
             )
@@ -434,4 +434,4 @@ class ImageSearchCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(ImageSearchCog(bot))
-    print("✅ ImageSearchCog V2 cargado.")
+    print(" ImageSearchCog V2 cargado.")

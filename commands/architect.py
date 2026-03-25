@@ -1,23 +1,23 @@
 """
-ARCHITECT COG V3 - El cerebro técnico de Pomposo 🧠
+ARCHITECT COG V3 - El cerebro técnico de Pomposo 
 Sistema inteligente de creación/edición/auto-reparación de código.
 
 Comandos (solo dueño):
-─── Creación ───
+ Creación 
   ¿nuevo <instrucción>   → Crea un comando nuevo
   ¿editar <instrucción>  → Edita un archivo existente
 
-─── Staging ───
+ Staging 
   ¿ok / ¿si              → Confirma código en staging
   ¿ver                   → Muestra código pendiente
   ¿no                    → Descarta código
 
-─── Parches ───
+ Parches 
   ¿parches               → Lista errores y parches pendientes
   ¿fix [id]              → Aplica un parche específico
   ¿explica [id]          → Explica un error/parche
 
-─── Utilidades ───
+ Utilidades 
   ¿undo <archivo>        → Restaura desde backup
   ¿backups [archivo]     → Lista backups disponibles
   ¿historial             → Muestra historial de cambios
@@ -43,18 +43,18 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from safe_editor import safe_editor, ErrorClassifier, ErrorSeverity, COMMANDS_DIR, STAGING_DIR
 
-# ═══════════════════════════════════════════
+# 
 #  CONFIGURACIÓN
-# ═══════════════════════════════════════════
+# 
 
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 architect_client = None
 if GEMINI_API_KEY:
     try:
         architect_client = genai.Client(api_key=GEMINI_API_KEY)
-        print("🏗️ Arquitecto V3 conectado a Gemini.")
+        print(" Arquitecto V3 conectado a Gemini.")
     except Exception as e:
-        print(f"⚠️ Error al inicializar Arquitecto: {e}")
+        print(f" Error al inicializar Arquitecto: {e}")
 
 # Cargar Personalidad
 PERSONALITY_FILE = Path(__file__).parent.parent / "ask_personalidad.txt"
@@ -69,9 +69,9 @@ def load_personality():
 
 POMPOSO_PERSONALITY = load_personality()
 
-# ═══════════════════════════════════════════
+# 
 #  PROMPTS
-# ═══════════════════════════════════════════
+# 
 
 ARCHITECT_PROMPT = f"""
 ROL: Eres el "Arquitecto", el lado técnico de Pomposo.
@@ -140,32 +140,32 @@ INSTRUCCIONES:
 # Frases del Arquitecto
 PHRASES = {
     "thinking": [
-        "🔨 Déjame ver qué puedo hacer...",
-        "🔧 Analizando... tantito...",
-        "⚡ Va va, ahorita lo cocino...",
-        "🧠 Procesando tu solicitud...",
+        " Déjame ver qué puedo hacer...",
+        " Analizando... tantito...",
+        " Va va, ahorita lo cocino...",
+        " Procesando tu solicitud...",
     ],
     "success": [
-        "✅ Listo, usa `¿ok` si te late o `¿ver` para revisarlo",
-        "✅ Ahí ta, `¿ok` para aplicar",
-        "✅ Ya quedó, `¿ok` para instalar",
+        " Listo, usa `¿ok` si te late o `¿ver` para revisarlo",
+        " Ahí ta, `¿ok` para aplicar",
+        " Ya quedó, `¿ok` para instalar",
     ],
     "error": [
-        "❌ Algo salió mal: ",
-        "❌ Esto no da: ",
-        "❌ Error: ",
+        " Algo salió mal: ",
+        " Esto no da: ",
+        " Error: ",
     ],
     "auto_fix": [
-        "🔧 Se detectó un error reparable. Aplicando parche automáticamente...",
-        "🔧 Error trivial detectado. Reparando sin preguntar...",
-        "🔧 Auto-reparación activada...",
+        " Se detectó un error reparable. Aplicando parche automáticamente...",
+        " Error trivial detectado. Reparando sin preguntar...",
+        " Auto-reparación activada...",
     ],
 }
 
 
-# ═══════════════════════════════════════════
+# 
 #  ARCHITECT COG V3
-# ═══════════════════════════════════════════
+# 
 
 class ArchitectCog(commands.Cog):
     """
@@ -182,9 +182,9 @@ class ArchitectCog(commands.Cog):
         self.error_cooldown = {}  # {command_name: last_error_time} anti-spam
         self.auto_fix_count = 0   # Contador de auto-reparaciones exitosas
         
-    # ═══════════════════════════════════════
+    # 
     #  HELPERS
-    # ═══════════════════════════════════════
+    # 
     
     def _is_on_cooldown(self, command_name: str, cooldown_seconds: int = 30) -> bool:
         """Verifica si un comando está en cooldown de errores (anti-spam)."""
@@ -225,7 +225,7 @@ class ArchitectCog(commands.Cog):
         try:
             prompt = INTENT_PROMPT.format(instruction=instruction)
             response = architect_client.models.generate_content(
-                model='gemini-2.0-flash',
+                model='gemini-3.1-flash-lite-preview',
                 contents=prompt
             )
             
@@ -246,7 +246,7 @@ class ArchitectCog(commands.Cog):
     async def generate_code(self, instruction: str, existing_code: str = None) -> tuple:
         """Genera o modifica código con la IA."""
         if not architect_client:
-            return None, "⚠️ El Arquitecto está dormido (falta API key)"
+            return None, " El Arquitecto está dormido (falta API key)"
         
         try:
             context = ""
@@ -260,7 +260,7 @@ class ArchitectCog(commands.Cog):
             full_prompt = f"{ARCHITECT_PROMPT}\n{context}\nSOLICITUD: {instruction}\n\nGenera el código:"
             
             response = architect_client.models.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-3.1-flash-lite-preview',
                 contents=full_prompt
             )
             
@@ -290,7 +290,7 @@ class ArchitectCog(commands.Cog):
             )
             
             response = architect_client.models.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-3.1-flash-lite-preview',
                 contents=prompt
             )
             
@@ -301,9 +301,9 @@ class ArchitectCog(commands.Cog):
         except Exception as e:
             return None, f"Error en diagnóstico: {e}"
 
-    # ═══════════════════════════════════════
+    # 
     #  COMANDOS DE CREACIÓN
-    # ═══════════════════════════════════════
+    # 
     
     @commands.command(name="nuevo", aliases=["new", "create", "crear"])
     @commands.is_owner()
@@ -316,7 +316,7 @@ class ArchitectCog(commands.Cog):
         """
         if not instruction:
             embed = discord.Embed(
-                title="❌ Falta la instrucción",
+                title=" Falta la instrucción",
                 description="**Uso:** `¿nuevo <descripción>`\n**Ejemplo:** `¿nuevo un comando de dados que tire 1-6`",
                 color=discord.Color.red()
             )
@@ -339,7 +339,7 @@ class ArchitectCog(commands.Cog):
                 safe_editor.write_staged_code(code, "propuesta.py")
                 
                 embed = discord.Embed(
-                    title=f"🆕 Nuevo Comando: `{self.pending_file_name}`",
+                    title=f" Nuevo Comando: `{self.pending_file_name}`",
                     color=discord.Color.green()
                 )
                 
@@ -350,12 +350,12 @@ class ArchitectCog(commands.Cog):
                     preview += f"\n# ... ({len(lines) - 40} líneas más)"
                 
                 embed.add_field(
-                    name=f"📝 Preview ({len(lines)} líneas)",
+                    name=f" Preview ({len(lines)} líneas)",
                     value=f"```python\n{preview[:1800]}\n```",
                     inline=False
                 )
                 embed.add_field(
-                    name="📋 Acciones",
+                    name=" Acciones",
                     value="`¿ok` aplicar • `¿ver` ver completo • `¿no` descartar",
                     inline=False
                 )
@@ -375,7 +375,7 @@ class ArchitectCog(commands.Cog):
         """
         if not instruction:
             embed = discord.Embed(
-                title="❌ Falta la instrucción",
+                title=" Falta la instrucción",
                 description=(
                     "**Uso:** `¿editar <archivo.py> <cambios>`\n"
                     "**Ejemplo:** `¿editar gatos.py arregla el error de timeout`\n\n"
@@ -388,7 +388,7 @@ class ArchitectCog(commands.Cog):
             files = [f.name for f in COMMANDS_DIR.glob("*.py") if f.name != "__init__.py"]
             root_files = [f.name for f in Path(__file__).parent.parent.glob("*.py")]
             all_files = sorted(set(files + root_files))
-            embed.add_field(name="📁 Archivos", value="`" + "`, `".join(all_files) + "`", inline=False)
+            embed.add_field(name=" Archivos", value="`" + "`, `".join(all_files) + "`", inline=False)
             
             return await ctx.reply(embed=embed)
         
@@ -405,7 +405,7 @@ class ArchitectCog(commands.Cog):
                 target_file = file_match.group(1) if file_match else None
             
             if not target_file:
-                await thinking.edit(content="❌ No pude identificar qué archivo editar. Especifica el nombre: `¿editar archivo.py cambios`")
+                await thinking.edit(content=" No pude identificar qué archivo editar. Especifica el nombre: `¿editar archivo.py cambios`")
                 return
             
             # Buscar el archivo
@@ -414,7 +414,7 @@ class ArchitectCog(commands.Cog):
                 file_path = Path(__file__).parent.parent / target_file
             
             if not file_path.exists():
-                await thinking.edit(content=f"❌ No encontré el archivo `{target_file}`")
+                await thinking.edit(content=f" No encontré el archivo `{target_file}`")
                 return
             
             # Leer código existente
@@ -431,7 +431,7 @@ class ArchitectCog(commands.Cog):
                 safe_editor.write_staged_code(code, "propuesta.py")
                 
                 embed = discord.Embed(
-                    title=f"✏️ Edición: `{target_file}`",
+                    title=f" Edición: `{target_file}`",
                     color=discord.Color.blue()
                 )
                 
@@ -441,7 +441,7 @@ class ArchitectCog(commands.Cog):
                 diff = new_lines - old_lines
                 diff_str = f"+{diff}" if diff > 0 else str(diff)
                 
-                embed.add_field(name="📊 Cambios", value=f"Antes: {old_lines} líneas → Después: {new_lines} líneas ({diff_str})", inline=False)
+                embed.add_field(name=" Cambios", value=f"Antes: {old_lines} líneas → Después: {new_lines} líneas ({diff_str})", inline=False)
                 
                 # Preview
                 lines = code.split('\n')
@@ -450,12 +450,12 @@ class ArchitectCog(commands.Cog):
                     preview += f"\n# ... ({len(lines) - 35} líneas más)"
                 
                 embed.add_field(
-                    name="📝 Preview",
+                    name=" Preview",
                     value=f"```python\n{preview[:1500]}\n```",
                     inline=False
                 )
                 embed.add_field(
-                    name="📋 Acciones",
+                    name=" Acciones",
                     value="`¿ok` aplicar • `¿ver` ver completo • `¿no` descartar",
                     inline=False
                 )
@@ -464,9 +464,9 @@ class ArchitectCog(commands.Cog):
             else:
                 await thinking.edit(content=f"{random.choice(PHRASES['error'])}{full_response[:500]}")
 
-    # ═══════════════════════════════════════
+    # 
     #  COMANDOS DE STAGING
-    # ═══════════════════════════════════════
+    # 
     
     @commands.command(name="ok", aliases=["si", "aplicar", "confirmar"])
     @commands.is_owner()
@@ -474,7 +474,7 @@ class ArchitectCog(commands.Cog):
         """Aplica el código en staging al archivo destino."""
         staged = safe_editor.get_staged_code()
         if not staged:
-            return await ctx.reply("📭 No hay código pendiente.")
+            return await ctx.reply(" No hay código pendiente.")
         
         target_name = self.pending_file_name or "nuevo_comando.py"
         
@@ -493,7 +493,7 @@ class ArchitectCog(commands.Cog):
                 safe_editor.clear_staging()
                 
                 embed = discord.Embed(
-                    title="✅ Código Aplicado",
+                    title=" Código Aplicado",
                     description=f"`{target_name}` ha sido {'actualizado' if self.pending_action == 'edit' else 'creado'}.",
                     color=discord.Color.green()
                 )
@@ -504,12 +504,12 @@ class ArchitectCog(commands.Cog):
                     cog_name = f"commands.{Path(target_name).stem}"
                     if cog_name in self.bot.extensions:
                         await self.bot.reload_extension(cog_name)
-                        reload_msg = f"🔄 `{cog_name}` recargado automáticamente"
+                        reload_msg = f" `{cog_name}` recargado automáticamente"
                     else:
                         await self.bot.load_extension(cog_name)
-                        reload_msg = f"🔄 `{cog_name}` cargado"
+                        reload_msg = f" `{cog_name}` cargado"
                 except Exception as e:
-                    reload_msg = f"⚠️ No pude recargar: {e}\nUsa `¿reiniciar`"
+                    reload_msg = f" No pude recargar: {e}\nUsa `¿reiniciar`"
                 
                 embed.add_field(name="Estado", value=reload_msg, inline=False)
                 await ctx.reply(embed=embed)
@@ -518,7 +518,7 @@ class ArchitectCog(commands.Cog):
                 self.pending_action = None
             else:
                 embed = discord.Embed(
-                    title="❌ Error al Aplicar",
+                    title=" Error al Aplicar",
                     description=f"```\n{message[:1500]}\n```",
                     color=discord.Color.red()
                 )
@@ -530,12 +530,12 @@ class ArchitectCog(commands.Cog):
         """Muestra el código completo en staging."""
         code = safe_editor.get_staged_code()
         if not code:
-            return await ctx.reply("📭 No hay código pendiente.")
+            return await ctx.reply(" No hay código pendiente.")
         
         # Header
         target = self.pending_file_name or "propuesta.py"
         action = "Edición" if self.pending_action == "edit" else "Nuevo"
-        await ctx.send(f"**📄 {action}: `{target}` ({len(code.split(chr(10)))} líneas)**")
+        await ctx.send(f"** {action}: `{target}` ({len(code.split(chr(10)))} líneas)**")
         
         # Enviar en chunks
         chunks = [code[i:i+1900] for i in range(0, len(code), 1900)]
@@ -550,13 +550,13 @@ class ArchitectCog(commands.Cog):
             safe_editor.clear_staging()
             self.pending_file_name = None
             self.pending_action = None
-            await ctx.reply("🗑️ Código descartado.")
+            await ctx.reply(" Código descartado.")
         else:
-            await ctx.reply("📭 No había nada que descartar.")
+            await ctx.reply(" No había nada que descartar.")
 
-    # ═══════════════════════════════════════
+    # 
     #  SISTEMA DE PARCHES
-    # ═══════════════════════════════════════
+    # 
     
     @commands.command(name="parches", aliases=["patches", "errores"])
     @commands.is_owner()
@@ -564,16 +564,16 @@ class ArchitectCog(commands.Cog):
         """Lista todos los parches pendientes con su severidad."""
         if not self.pending_patches:
             embed = discord.Embed(
-                title="📭 Sin Parches Pendientes",
+                title=" Sin Parches Pendientes",
                 description="Todo en orden. No hay errores registrados.",
                 color=discord.Color.green()
             )
             if self.auto_fix_count > 0:
-                embed.set_footer(text=f"🔧 {self.auto_fix_count} reparaciones automáticas realizadas esta sesión")
+                embed.set_footer(text=f" {self.auto_fix_count} reparaciones automáticas realizadas esta sesión")
             return await ctx.reply(embed=embed)
         
         embed = discord.Embed(
-            title=f"🔧 Parches Pendientes ({len(self.pending_patches)})",
+            title=f" Parches Pendientes ({len(self.pending_patches)})",
             color=discord.Color.orange()
         )
         
@@ -591,7 +591,7 @@ class ArchitectCog(commands.Cog):
             )
         
         if self.auto_fix_count > 0:
-            embed.set_footer(text=f"🔧 {self.auto_fix_count} reparaciones automáticas esta sesión")
+            embed.set_footer(text=f" {self.auto_fix_count} reparaciones automáticas esta sesión")
         
         await ctx.reply(embed=embed)
     
@@ -601,11 +601,11 @@ class ArchitectCog(commands.Cog):
         """Aplica un parche específico o el primero disponible."""
         if patch_id is None:
             if not self.pending_patches:
-                return await ctx.reply("📭 No hay parches pendientes.")
+                return await ctx.reply(" No hay parches pendientes.")
             patch_id = list(self.pending_patches.keys())[0]
         
         if patch_id not in self.pending_patches:
-            return await ctx.reply(f"❌ No existe el parche #{patch_id}. Usa `¿parches` para ver la lista.")
+            return await ctx.reply(f" No existe el parche #{patch_id}. Usa `¿parches` para ver la lista.")
         
         patch = self.pending_patches[patch_id]
         target_path = patch['file']
@@ -619,7 +619,7 @@ class ArchitectCog(commands.Cog):
                 del self.pending_patches[patch_id]
                 
                 embed = discord.Embed(
-                    title=f"✅ Parche #{patch_id} Aplicado",
+                    title=f" Parche #{patch_id} Aplicado",
                     description=f"`{Path(target_path).name}` reparado.",
                     color=discord.Color.green()
                 )
@@ -629,14 +629,14 @@ class ArchitectCog(commands.Cog):
                     cog_name = f"commands.{Path(target_path).stem}"
                     if cog_name in self.bot.extensions:
                         await self.bot.reload_extension(cog_name)
-                        embed.add_field(name="🔄", value=f"`{cog_name}` recargado", inline=False)
+                        embed.add_field(name="", value=f"`{cog_name}` recargado", inline=False)
                 except Exception as e:
-                    embed.add_field(name="⚠️", value=f"Error recargando: {e}", inline=False)
+                    embed.add_field(name="", value=f"Error recargando: {e}", inline=False)
                 
                 await ctx.reply(embed=embed)
             else:
                 embed = discord.Embed(
-                    title=f"❌ Error aplicando parche #{patch_id}",
+                    title=f" Error aplicando parche #{patch_id}",
                     description=f"```\n{message[:1500]}\n```",
                     color=discord.Color.red()
                 )
@@ -648,17 +648,17 @@ class ArchitectCog(commands.Cog):
         """Explica un error/parche con ayuda de la IA."""
         if patch_id is None:
             if not self.pending_patches:
-                return await ctx.reply("📭 No hay parches para explicar.")
+                return await ctx.reply(" No hay parches para explicar.")
             patch_id = list(self.pending_patches.keys())[0]
         
         if patch_id not in self.pending_patches:
-            return await ctx.reply(f"❌ No existe el parche #{patch_id}.")
+            return await ctx.reply(f" No existe el parche #{patch_id}.")
         
         patch = self.pending_patches[patch_id]
         
         async with ctx.typing():
             if not architect_client:
-                return await ctx.reply("❌ El Arquitecto está dormido (falta API key).")
+                return await ctx.reply(" El Arquitecto está dormido (falta API key).")
             
             try:
                 file_content = safe_editor.read_file_safe(patch['file']) or "No disponible"
@@ -679,7 +679,7 @@ class ArchitectCog(commands.Cog):
                 """
                 
                 response = architect_client.models.generate_content(
-                    model='gemini-2.0-flash',
+                    model='gemini-3.1-flash-lite-preview',
                     contents=prompt
                 )
                 
@@ -698,16 +698,16 @@ class ArchitectCog(commands.Cog):
             embed.set_footer(text=f"Severidad: {ErrorClassifier.get_severity_label(severity)}")
             await ctx.reply(embed=embed)
 
-    # ═══════════════════════════════════════
+    # 
     #  UTILIDADES
-    # ═══════════════════════════════════════
+    # 
     
     @commands.command(name="undo", aliases=["restaurar", "restore"])
     @commands.is_owner()
     async def restore_backup(self, ctx, archivo: str = None):
         """Restaura un archivo desde su backup más reciente."""
         if not archivo:
-            return await ctx.reply("❌ Especifica: `¿undo nombre.py`")
+            return await ctx.reply(" Especifica: `¿undo nombre.py`")
         
         target = COMMANDS_DIR / archivo
         if not target.exists():
@@ -716,13 +716,13 @@ class ArchitectCog(commands.Cog):
         success, msg = safe_editor.restore_latest_backup(str(target))
         
         if success:
-            embed = discord.Embed(title="✅ Restaurado", description=msg, color=discord.Color.green())
+            embed = discord.Embed(title=" Restaurado", description=msg, color=discord.Color.green())
             # Hot reload
             try:
                 cog_name = f"commands.{Path(archivo).stem}"
                 if cog_name in self.bot.extensions:
                     await self.bot.reload_extension(cog_name)
-                    embed.add_field(name="🔄", value=f"`{cog_name}` recargado", inline=False)
+                    embed.add_field(name="", value=f"`{cog_name}` recargado", inline=False)
             except:
                 pass
             await ctx.reply(embed=embed)
@@ -735,11 +735,11 @@ class ArchitectCog(commands.Cog):
         """Lista backups disponibles."""
         backups = safe_editor.list_backups(archivo)
         if not backups:
-            return await ctx.reply("📭 No hay backups.")
+            return await ctx.reply(" No hay backups.")
         
-        embed = discord.Embed(title="📦 Backups Disponibles", color=discord.Color.blue())
+        embed = discord.Embed(title=" Backups Disponibles", color=discord.Color.blue())
         for b in backups[:10]:
-            embed.add_field(name=b['name'], value=f"📅 {b['date']}", inline=True)
+            embed.add_field(name=b['name'], value=f" {b['date']}", inline=True)
         
         if len(backups) > 10:
             embed.set_footer(text=f"... y {len(backups)-10} más")
@@ -751,25 +751,25 @@ class ArchitectCog(commands.Cog):
         """Muestra el historial de cambios recientes."""
         history = safe_editor.get_history()
         if not history:
-            return await ctx.reply("📭 No hay cambios registrados en esta sesión.")
+            return await ctx.reply(" No hay cambios registrados en esta sesión.")
         
         embed = discord.Embed(
-            title="📜 Historial de Cambios",
+            title=" Historial de Cambios",
             description=f"Últimos {len(history)} cambios de esta sesión:",
             color=discord.Color.blue()
         )
         
         for entry in history:
-            action_emoji = {"auto-fix": "🔧", "manual": "✏️"}.get(entry['action'], "📝")
+            action_emoji = {"auto-fix": "", "manual": ""}.get(entry['action'], "")
             backup_info = f" (backup: `{entry['backup']}`)" if entry['backup'] else ""
             embed.add_field(
                 name=f"{action_emoji} {entry['file']}",
-                value=f"📅 {entry['timestamp']} — {entry['action']}{backup_info}",
+                value=f" {entry['timestamp']} — {entry['action']}{backup_info}",
                 inline=False
             )
         
         if self.auto_fix_count > 0:
-            embed.set_footer(text=f"🔧 Total auto-reparaciones esta sesión: {self.auto_fix_count}")
+            embed.set_footer(text=f" Total auto-reparaciones esta sesión: {self.auto_fix_count}")
         
         await ctx.reply(embed=embed)
     
@@ -777,25 +777,25 @@ class ArchitectCog(commands.Cog):
     @commands.is_owner()
     async def restart_bot(self, ctx):
         """Reinicia el bot."""
-        await ctx.reply("🔄 Reiniciando...")
+        await ctx.reply(" Reiniciando...")
         sys.exit(0)
 
-    # ═══════════════════════════════════════
+    # 
     #  AYUDA DEL ARQUITECTO
-    # ═══════════════════════════════════════
+    # 
     
     @commands.command(name="arquitecto", aliases=["architect", "arch"])
     @commands.is_owner()
     async def architect_help(self, ctx):
         """Muestra la guía completa del Arquitecto."""
         embed = discord.Embed(
-            title="🏗️ Arquitecto V3 — Guía de Comandos",
+            title=" Arquitecto V3 — Guía de Comandos",
             description="Sistema inteligente de código con auto-reparación.",
             color=discord.Color.blue()
         )
         
         embed.add_field(
-            name="🆕 Creación",
+            name=" Creación",
             value=(
                 "`¿nuevo <instrucción>` — Crear comando nuevo\n"
                 "`¿editar <archivo.py> <cambios>` — Editar archivo existente"
@@ -804,7 +804,7 @@ class ArchitectCog(commands.Cog):
         )
         
         embed.add_field(
-            name="📋 Staging",
+            name=" Staging",
             value=(
                 "`¿ok` — Aplicar código pendiente\n"
                 "`¿ver` — Ver código completo\n"
@@ -814,7 +814,7 @@ class ArchitectCog(commands.Cog):
         )
         
         embed.add_field(
-            name="🔧 Parches",
+            name=" Parches",
             value=(
                 "`¿parches` — Ver parches pendientes\n"
                 "`¿fix [id]` — Aplicar un parche\n"
@@ -824,7 +824,7 @@ class ArchitectCog(commands.Cog):
         )
         
         embed.add_field(
-            name="🛠️ Utilidades",
+            name=" Utilidades",
             value=(
                 "`¿undo <archivo>` — Restaurar desde backup\n"
                 "`¿backups [archivo]` — Ver backups\n"
@@ -835,24 +835,24 @@ class ArchitectCog(commands.Cog):
         )
         
         embed.add_field(
-            name="⚡ Auto-Reparación",
+            name=" Auto-Reparación",
             value=(
                 "El sistema clasifica errores automáticamente:\n"
-                "🔧 **AUTO_FIX** — Se repara solo (imports, sintaxis)\n"
-                "💡 **SUGGEST_FIX** — Genera parche, pide confirmación\n"
-                "🚨 **NOTIFY_ONLY** — Solo notifica (errores externos)"
+                " **AUTO_FIX** — Se repara solo (imports, sintaxis)\n"
+                " **SUGGEST_FIX** — Genera parche, pide confirmación\n"
+                " **NOTIFY_ONLY** — Solo notifica (errores externos)"
             ),
             inline=False
         )
         
         if self.auto_fix_count > 0:
-            embed.set_footer(text=f"🔧 {self.auto_fix_count} auto-reparaciones esta sesión")
+            embed.set_footer(text=f" {self.auto_fix_count} auto-reparaciones esta sesión")
         
         await ctx.reply(embed=embed)
 
-    # ═══════════════════════════════════════
+    # 
     #  AUTO-DIAGNÓSTICO INTELIGENTE
-    # ═══════════════════════════════════════
+    # 
     
     async def handle_error_diagnosis(self, ctx, error):
         """
@@ -876,7 +876,7 @@ class ArchitectCog(commands.Cog):
         
         # Rate limiting: no generar parches si el mismo comando falla repetidamente
         if self._is_on_cooldown(command_name, cooldown_seconds=30):
-            print(f"⏳ Error en '{command_name}' en cooldown, ignorando.")
+            print(f" Error en '{command_name}' en cooldown, ignorando.")
             return
         
         # Obtener código fuente
@@ -893,14 +893,14 @@ class ArchitectCog(commands.Cog):
         if not source_file:
             return
         
-        # ── PASO 1: Clasificar el error ──
+        #  PASO 1: Clasificar el error 
         severity = ErrorClassifier.classify(original, error_tb)
         severity_emoji = ErrorClassifier.get_severity_emoji(severity)
         severity_label = ErrorClassifier.get_severity_label(severity)
         
         print(f"\n{severity_emoji} Error clasificado como [{severity_label}] en '{command_name}'")
         
-        # ── PASO 2: Actuar según la severidad ──
+        #  PASO 2: Actuar según la severidad 
         
         if severity == ErrorSeverity.NOTIFY_ONLY:
             # Solo notificar al dueño, no intentar reparar
@@ -920,10 +920,10 @@ class ArchitectCog(commands.Cog):
             return
         
         if severity == ErrorSeverity.AUTO_FIX:
-            # ── AUTO-REPARACIÓN ──
+            #  AUTO-REPARACIÓN 
             await self._auto_fix(ctx, command_name, patch_code, source_file, original, explanation)
         else:
-            # ── SUGGEST_FIX: guardar parche y notificar ──
+            #  SUGGEST_FIX: guardar parche y notificar 
             self.patch_counter += 1
             patch_id = self.patch_counter
             self.pending_patches[patch_id] = {
@@ -938,7 +938,7 @@ class ArchitectCog(commands.Cog):
     
     async def _auto_fix(self, ctx, command_name, patch_code, source_file, error, explanation):
         """Aplica un parche automáticamente sin pedir confirmación."""
-        print(f"🔧 Intentando auto-reparación de '{command_name}'...")
+        print(f" Intentando auto-reparación de '{command_name}'...")
         
         # Guardar parche en staging
         safe_editor.write_staged_code(patch_code, "parche_autorepair.py")
@@ -961,18 +961,18 @@ class ArchitectCog(commands.Cog):
                     await self.bot.reload_extension(cog_name)
                     reload_ok = True
             except Exception as e:
-                print(f"⚠️ Error recargando tras auto-fix: {e}")
+                print(f" Error recargando tras auto-fix: {e}")
             
             # Notificar al dueño del éxito
             try:
                 owner = await self.bot.fetch_user(self.bot.owner_id)
                 embed = discord.Embed(
-                    title=f"🔧 Auto-Reparación Exitosa — `{command_name}`",
+                    title=f" Auto-Reparación Exitosa — `{command_name}`",
                     description=f"Se detectó y reparó automáticamente un error.",
                     color=discord.Color.green()
                 )
                 embed.add_field(name="Error Original", value=f"```\n{str(error)[:300]}\n```", inline=False)
-                embed.add_field(name="Estado", value=f"{'✅ Recargado' if reload_ok else '⚠️ Necesita reinicio'}", inline=True)
+                embed.add_field(name="Estado", value=f"{' Recargado' if reload_ok else ' Necesita reinicio'}", inline=True)
                 embed.add_field(name="Reparaciones Auto", value=f"#{self.auto_fix_count}", inline=True)
                 embed.set_footer(text="Usa ¿undo para revertir si algo no se ve bien")
                 await owner.send(embed=embed)
@@ -980,12 +980,12 @@ class ArchitectCog(commands.Cog):
                 pass
             
             # Informar en el canal
-            await ctx.send(f"🔧 Error detectado y reparado automáticamente en `{command_name}`. Intenta de nuevo.")
+            await ctx.send(f" Error detectado y reparado automáticamente en `{command_name}`. Intenta de nuevo.")
             
-            print(f"✅ Auto-reparación #{self.auto_fix_count} exitosa para '{command_name}'")
+            print(f" Auto-reparación #{self.auto_fix_count} exitosa para '{command_name}'")
         else:
             # Si auto-fix falla, degradar a SUGGEST_FIX
-            print(f"❌ Auto-reparación falló para '{command_name}', guardando como parche sugerido")
+            print(f" Auto-reparación falló para '{command_name}', guardando como parche sugerido")
             self.patch_counter += 1
             self.pending_patches[self.patch_counter] = {
                 "error": str(error),
@@ -1014,7 +1014,7 @@ class ArchitectCog(commands.Cog):
             
             if severity == ErrorSeverity.NOTIFY_ONLY:
                 embed.add_field(
-                    name="ℹ️ ¿Por qué no se puede reparar?",
+                    name="ℹ ¿Por qué no se puede reparar?",
                     value="Este error es externo (API, red, permisos) y no se puede resolver editando código.",
                     inline=False
                 )
@@ -1041,7 +1041,7 @@ class ArchitectCog(commands.Cog):
             
             if explanation:
                 embed.add_field(
-                    name="💡 Análisis",
+                    name=" Análisis",
                     value=explanation[:500],
                     inline=False
                 )
@@ -1057,9 +1057,9 @@ class ArchitectCog(commands.Cog):
         except Exception as e:
             print(f"Error enviando DM al dueño: {e}")
 
-    # ═══════════════════════════════════════
+    # 
     #  SLASH COMMANDS
-    # ═══════════════════════════════════════
+    # 
     
     owner_group = app_commands.Group(name="owner", description="Comandos privados del sistema (Solo Dueño)")
     
@@ -1067,7 +1067,7 @@ class ArchitectCog(commands.Cog):
     @app_commands.describe(instruccion="Descripción del comando a crear")
     async def nuevo_slash(self, interaction: discord.Interaction, instruccion: str):
         if interaction.user.id != self.bot.owner_id:
-            return await interaction.response.send_message("❌", ephemeral=True)
+            return await interaction.response.send_message("", ephemeral=True)
         ctx = await self.bot.get_context(interaction)
         await self.create_new_command(ctx, instruction=instruccion)
 
@@ -1075,7 +1075,7 @@ class ArchitectCog(commands.Cog):
     @app_commands.describe(instruccion="Archivo y cambios a realizar")
     async def editar_slash(self, interaction: discord.Interaction, instruccion: str):
         if interaction.user.id != self.bot.owner_id:
-            return await interaction.response.send_message("❌", ephemeral=True)
+            return await interaction.response.send_message("", ephemeral=True)
         ctx = await self.bot.get_context(interaction)
         await self.edit_command(ctx, instruction=instruccion)
 
@@ -1125,4 +1125,4 @@ class ArchitectCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(ArchitectCog(bot))
-    print("🏗️ Arquitecto V3 cargado.")
+    print(" Arquitecto V3 cargado.")

@@ -89,7 +89,7 @@ class TouchCog(commands.Cog):
                             gif = random.choice(data["results"])
                             return gif["media_formats"]["gif"]["url"]
         except Exception as e:
-            print(f"⚠️ Error obteniendo GIF de Tenor: {e}")
+            print(f" Error obteniendo GIF de Tenor: {e}")
         
         return None
 
@@ -114,7 +114,7 @@ class TouchCog(commands.Cog):
                             gif = random.choice(data["data"])
                             return gif["images"]["original"]["url"]
         except Exception as e:
-            print(f"⚠️ Error obteniendo GIF de Giphy: {e}")
+            print(f" Error obteniendo GIF de Giphy: {e}")
         
         return None
 
@@ -134,7 +134,7 @@ class TouchCog(commands.Cog):
         
         # Si no hay APIs configuradas, usar fallback
         if not sources:
-            print("⚠️ No hay APIs configuradas (TENOR_API_KEY o GIPHY_API_KEY)")
+            print(" No hay APIs configuradas (TENOR_API_KEY o GIPHY_API_KEY)")
             return self._get_fallback_gif()
         
         # Mezclar las fuentes para alternar aleatoriamente
@@ -144,11 +144,11 @@ class TouchCog(commands.Cog):
         for source_name, source_func in sources:
             gif_url = await source_func(search_term)
             if gif_url:
-                print(f"✅ GIF obtenido de {source_name.upper()} con término: '{search_term}'")
+                print(f" GIF obtenido de {source_name.upper()} con término: '{search_term}'")
                 return gif_url
         
         # Si todas las APIs fallan, usar fallback
-        print("⚠️ Todas las APIs fallaron, usando GIF de respaldo")
+        print(" Todas las APIs fallaron, usando GIF de respaldo")
         return self._get_fallback_gif()
 
     def _get_fallback_gif(self) -> str:
@@ -191,7 +191,7 @@ class TouchCog(commands.Cog):
 
                 if not matches:
                     return await ctx.send(
-                        f"No encontré ningún usuario similar a: **{user_query}**\n💡 Intenta con el nombre exacto o una mención."
+                        f"No encontré ningún usuario similar a: **{user_query}**\n Intenta con el nombre exacto o una mención."
                     )
 
                 # Seleccionar el usuario con mayor similitud
@@ -199,7 +199,7 @@ class TouchCog(commands.Cog):
 
             # Validaciones
             if target_member.id == ctx.author.id:
-                return await ctx.send("oye que 😨")
+                return await ctx.send("oye que ")
 
             if target_member.id == self.bot.user.id:
                 return await ctx.send("no me TOQUES")
@@ -222,7 +222,7 @@ class TouchCog(commands.Cog):
             await ctx.send(embed=embed)
 
         except Exception as e:
-            await ctx.send(f"❌ Error al ejecutar el comando: {e}")
+            await ctx.send(f" Error al ejecutar el comando: {e}")
 
     @app_commands.command(name="tocar", description="toca a alguien")
     @app_commands.describe(usuario="El usuario que vas a tocar")
@@ -259,4 +259,4 @@ class TouchCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(TouchCog(bot))
-    print("✅ TouchCog (commands.tocar) cargado correctamente.")
+    print(" TouchCog (commands.tocar) cargado correctamente.")

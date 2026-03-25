@@ -54,7 +54,7 @@ class NsfwCog(commands.Cog):
                         if not data.get("error"):
                             return data.get("link")
         except Exception as e:
-            print(f"⚠️ Error PurrBot: {e}")
+            print(f" Error PurrBot: {e}")
         
         # Fallback por si la API falla
         return "https://media.tenor.com/F_N6S15iUeAAAAAM/cat-petting.gif"
@@ -79,22 +79,22 @@ class NsfwCog(commands.Cog):
                 return await ctx.send(f"No encontré a nadie con: **{user_query}**")
 
             if target_member.id == self.bot.owner_id:
-                return await ctx.send("❌ No puedes hacer eso con mi creador... ten más respeto. 😤")
+                return await ctx.send(" No puedes hacer eso con mi creador... ten más respeto. ")
             
             if target_member.id == ctx.author.id:
-                return await ctx.send("¿Contigo mismo? Mejor busca a alguien más... 🙄")
+                return await ctx.send("¿Contigo mismo? Mejor busca a alguien más... ")
             
             gif_url = await self.get_nsfw_gif()
             
             embed = discord.Embed(
-                description=f"**{ctx.author.display_name}** está teniendo sexo con **{target_member.display_name}** 🥵",
+                description=f"**{ctx.author.display_name}** está teniendo sexo con **{target_member.display_name}** ",
                 color=discord.Color.dark_red()
             )
             embed.set_image(url=gif_url)
             await ctx.send(embed=embed)
 
         except Exception as e:
-            await ctx.send(f"❌ Error: {e}")
+            await ctx.send(f" Error: {e}")
 
     @app_commands.command(name="nsfw", description="Comando NSFW explícito")
     @app_commands.describe(usuario="Usuario con el que interactuar")
@@ -102,7 +102,7 @@ class NsfwCog(commands.Cog):
 
             
         if usuario.id == self.bot.owner_id:
-            return await interaction.response.send_message("❌ No puedes hacer eso con mi creador... ten más respeto. 😤", ephemeral=True)
+            return await interaction.response.send_message(" No puedes hacer eso con mi creador... ten más respeto. ", ephemeral=True)
             
         if usuario.id == interaction.user.id:
             return await interaction.response.send_message("¿Contigo mismo? ...", ephemeral=True)
@@ -111,7 +111,7 @@ class NsfwCog(commands.Cog):
         gif_url = await self.get_nsfw_gif()
         
         embed = discord.Embed(
-            description=f"**{interaction.user.display_name}** está teniendo sexo con **{usuario.display_name}** 🥵",
+            description=f"**{interaction.user.display_name}** está teniendo sexo con **{usuario.display_name}** ",
             color=discord.Color.dark_red()
         )
         embed.set_image(url=gif_url)
@@ -120,4 +120,4 @@ class NsfwCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(NsfwCog(bot))
-    print("✅ NsfwCog cargado.")
+    print(" NsfwCog cargado.")

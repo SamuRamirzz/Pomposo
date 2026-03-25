@@ -57,34 +57,34 @@ class NicknameCog(commands.Cog):
         """
         # Validaciones
         if len(new_nick) > 32:
-            return False, "❌ El apodo no puede tener más de 32 caracteres."
+            return False, " El apodo no puede tener más de 32 caracteres."
         
         if len(new_nick.strip()) == 0:
-            return False, "❌ El apodo no puede estar vacío."
+            return False, " El apodo no puede estar vacío."
 
         # Verificar si el bot tiene permisos
         bot_member = guild.get_member(self.bot.user.id)
         if not bot_member.guild_permissions.manage_nicknames:
-            return False, "❌ No tengo permisos para cambiar apodos (necesito `Manage Nicknames`)."
+            return False, " No tengo permisos para cambiar apodos (necesito `Manage Nicknames`)."
 
         # Verificar jerarquía de roles
         if member.top_role >= bot_member.top_role and guild.owner_id != self.bot.user.id:
-            return False, f"❌ No puedo cambiar el apodo de {member.mention} porque su rol es igual o superior al mío."
+            return False, f" No puedo cambiar el apodo de {member.mention} porque su rol es igual o superior al mío."
 
         # No se puede cambiar el apodo del dueño del servidor
         if member.id == guild.owner_id:
-            return False, f"❌ No puedo cambiar el apodo del dueño del servidor."
+            return False, f" No puedo cambiar el apodo del dueño del servidor."
 
         # Guardar el apodo anterior
         old_nick = member.display_name
 
         try:
             await member.edit(nick=new_nick, reason=f"Cambiado por {executor.name}")
-            return True, f"✅ Apodo cambiado exitosamente:\n**{old_nick}** → **{new_nick}**"
+            return True, f" Apodo cambiado exitosamente:\n**{old_nick}** → **{new_nick}**"
         except discord.Forbidden:
-            return False, f"❌ No tengo permisos para cambiar el apodo de {member.mention}."
+            return False, f" No tengo permisos para cambiar el apodo de {member.mention}."
         except discord.HTTPException as e:
-            return False, f"❌ Error al cambiar el apodo: {e}"
+            return False, f" Error al cambiar el apodo: {e}"
 
     @commands.command(name="nick")
     async def nick_command(self, ctx, user_query: str, *, new_nickname: str):
@@ -107,26 +107,26 @@ class NicknameCog(commands.Cog):
                 member_id = int(user_query)
                 member = ctx.guild.get_member(member_id)
                 if not member:
-                    return await ctx.send(f"❌ No encontré ningún miembro con ID `{member_id}` en este servidor.")
+                    return await ctx.send(f" No encontré ningún miembro con ID `{member_id}` en este servidor.")
             # Si es un nombre, usar fuzzy matching
             else:
                 matches = find_member_fuzzy(ctx.guild, user_query)
 
                 if not matches:
                     return await ctx.send(
-                        f"❌ No encontré ningún usuario similar a: **{user_query}**\n💡 Intenta con el nombre exacto o una mención."
+                        f" No encontré ningún usuario similar a: **{user_query}**\n Intenta con el nombre exacto o una mención."
                     )
 
                 # Seleccionar el usuario con mayor similitud (el primero de la lista)
                 member, score = matches[0]
-                await ctx.send(f"🔍 Usuario encontrado: **{member.display_name}** (similitud: {score}%)")
+                await ctx.send(f" Usuario encontrado: **{member.display_name}** (similitud: {score}%)")
 
             # Cambiar el nickname
             success, message = await self.change_nickname(ctx.guild, member, new_nickname, ctx.author)
             
             if success:
                 embed = discord.Embed(
-                    title="✏️ Apodo Cambiado",
+                    title=" Apodo Cambiado",
                     description=message,
                     color=discord.Color.green()
                 )
@@ -139,9 +139,9 @@ class NicknameCog(commands.Cog):
                 await ctx.send(message)
 
         except commands.MissingRequiredArgument:
-            await ctx.send("❌ Uso correcto: `¿nick <usuario> <nuevo apodo>`")
+            await ctx.send(" Uso correcto: `¿nick <usuario> <nuevo apodo>`")
         except Exception as e:
-            await ctx.send(f"❌ Error al cambiar apodo: {e}")
+            await ctx.send(f" Error al cambiar apodo: {e}")
 
     @app_commands.command(name="nick", description="Cambia el apodo de un usuario")
     @app_commands.describe(
@@ -159,7 +159,7 @@ class NicknameCog(commands.Cog):
         
         if success:
             embed = discord.Embed(
-                title="✏️ Apodo Cambiado",
+                title=" Apodo Cambiado",
                 description=message,
                 color=discord.Color.green()
             )
@@ -167,7 +167,7 @@ class NicknameCog(commands.Cog):
             embed.add_field(name="Nuevo Apodo", value=f"`{nuevo_apodo}`", inline=True)
             embed.add_field(name="Cambiado por", value=interaction.user.mention, inline=True)
             embed.set_thumbnail(url=usuario.display_avatar.url)
-            embed.set_footer(text="🔒 Este mensaje solo es visible para ti")
+            embed.set_footer(text=" Este mensaje solo es visible para ti")
             await interaction.followup.send(embed=embed, ephemeral=True)
         else:
             await interaction.followup.send(message, ephemeral=True)
@@ -176,7 +176,7 @@ class NicknameCog(commands.Cog):
     async def nick_command_error(self, ctx, error):
         """Maneja errores del comando de prefijo."""
         if isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send("❌ Uso correcto: `¿nick <usuario> <nuevo apodo>`")
+            await ctx.send(" Uso correcto: `¿nick <usuario> <nuevo apodo>`")
 
     @nick_slash.error
     async def nick_slash_error(self, interaction: discord.Interaction, error):

@@ -37,12 +37,12 @@ def load_blocked_users():
         with open(BLOCKED_USERS_FILE, 'r') as f:
             blocked_list = json.load(f)
             blocked_user_ids = set(blocked_list)
-            print(f"✅ Cargados {len(blocked_user_ids)} usuarios bloqueados.")
+            print(f" Cargados {len(blocked_user_ids)} usuarios bloqueados.")
     except FileNotFoundError:
-        print("⚠️ No se encontró el archivo 'blocked_users.json'. Se creará uno nuevo si es necesario.")
+        print(" No se encontró el archivo 'blocked_users.json'. Se creará uno nuevo si es necesario.")
         blocked_user_ids = set()
     except json.JSONDecodeError:
-        print("❌ Error al leer 'blocked_users.json'. El archivo podría estar corrupto.")
+        print(" Error al leer 'blocked_users.json'. El archivo podría estar corrupto.")
         blocked_user_ids = set()
 
 
@@ -117,7 +117,7 @@ async def on_ready():
     config = load_config()
     bot.auto_reply_channel_id = config.get("auto_channel_id")
     if bot.auto_reply_channel_id:
-        print(f"ℹ️ Canal de auto-respuesta activado: {bot.auto_reply_channel_id}")
+        print(f"ℹ Canal de auto-respuesta activado: {bot.auto_reply_channel_id}")
     if not bot.owner_id:
         app_info = await bot.application_info()
         bot.owner_id = app_info.owner.id
@@ -127,16 +127,16 @@ async def on_ready():
 
     try:
         synced = await bot.tree.sync()
-        print(f"🌐 Sincronizados {len(synced)} comandos de barra.")
+        print(f" Sincronizados {len(synced)} comandos de barra.")
     except Exception as e:
-        print(f"⚠️ Error al sincronizar comandos: {e}")
+        print(f" Error al sincronizar comandos: {e}")
 
 
 async def load_all_cogs():
     """Carga todos los archivos .py de la carpeta 'commands'."""
     print("--- Cargando Módulos (Cogs) ---")
     if not os.path.exists('./commands'):
-        print("ℹ️ Carpeta 'commands' no encontrada, omitiendo la carga de cogs.")
+        print("ℹ Carpeta 'commands' no encontrada, omitiendo la carga de cogs.")
         return
 
     for filename in os.listdir('./commands'):
@@ -144,9 +144,9 @@ async def load_all_cogs():
             cog_name = f'commands.{filename[:-3]}'
             try:
                 await bot.load_extension(cog_name)
-                print(f"✅ Módulo '{cog_name}' cargado.")
+                print(f" Módulo '{cog_name}' cargado.")
             except Exception as e:
-                print(f"❌ Error al cargar '{cog_name}': {e}")
+                print(f" Error al cargar '{cog_name}': {e}")
                 import traceback
                 traceback.print_exc()
     print("---------------------------------")
@@ -159,12 +159,12 @@ async def on_message(message):
 
     # 1. LÓGICA DE MD (Mensaje Directo) A LA CONSOLA
     if isinstance(message.channel, discord.DMChannel) and message.author != bot.user:
-        print(f"\n[📩 DM de {message.author.name}]: {message.content}")
+        print(f"\n[ DM de {message.author.name}]: {message.content}")
 
         if message.attachments:
-            print("   [📸 Imagen/Archivo adjunto detectado]:")
+            print("   [ Imagen/Archivo adjunto detectado]:")
             for attachment in message.attachments:
-                print(f"   🔗 LINK: {attachment.url}")
+                print(f"    LINK: {attachment.url}")
 
         print("-" * 40)
 
@@ -182,9 +182,9 @@ async def on_message(message):
             chapa_file = discord.File("chapa.mp3")
             await message.channel.send(file=chapa_file)
         except FileNotFoundError:
-            print("⚠️ Error: No se encontró el archivo chapa.mp3")
+            print(" Error: No se encontró el archivo chapa.mp3")
         except Exception as e:
-            print(f"⚠️ Error al enviar chapa.mp3: {e}")
+            print(f" Error al enviar chapa.mp3: {e}")
 
     # LÓGICA DE AUTO-RESPUESTA (Canal de IA)
     if hasattr(bot, 'auto_reply_channel_id') and message.channel.id == bot.auto_reply_channel_id:
@@ -226,7 +226,7 @@ async def on_command_error(ctx, error):
     # Manejar errores comunes con embeds
     if isinstance(error, commands.MissingPermissions):
         embed = discord.Embed(
-            title="❌ Sin Permisos",
+            title=" Sin Permisos",
             description="No tienes permisos para usar este comando.",
             color=discord.Color.red()
         )
@@ -234,12 +234,12 @@ async def on_command_error(ctx, error):
         return
     
     if isinstance(error, commands.NotOwner):
-        await ctx.send("🚫 Este comando es solo para el dueño del bot.", delete_after=5)
+        await ctx.send(" Este comando es solo para el dueño del bot.", delete_after=5)
         return
     
     if isinstance(error, commands.MissingRequiredArgument):
         embed = discord.Embed(
-            title="❌ Argumento Faltante",
+            title=" Argumento Faltante",
             description=f"Falta el argumento: `{error.param.name}`",
             color=discord.Color.orange()
         )
@@ -254,7 +254,7 @@ async def on_command_error(ctx, error):
     
     if isinstance(error, commands.BadArgument):
         embed = discord.Embed(
-            title="❌ Argumento Inválido",
+            title=" Argumento Inválido",
             description=str(error)[:300],
             color=discord.Color.orange()
         )
@@ -271,12 +271,12 @@ async def on_command_error(ctx, error):
     
     # Imprimir en consola
     original = getattr(error, 'original', error)
-    print(f"⚠️ Error en comando '{ctx.command}': {original}")
+    print(f" Error en comando '{ctx.command}': {original}")
     tb.print_exception(type(original), original, original.__traceback__)
     
     # Notificar al usuario con embed
     embed = discord.Embed(
-        title="❌ Error",
+        title=" Error",
         description=f"```\n{str(original)[:300]}\n```",
         color=discord.Color.red()
     )
@@ -307,19 +307,19 @@ async def block(ctx, *, user_query: str):
             member_id = int(user_query)
             member = ctx.guild.get_member(member_id)
             if not member:
-                return await ctx.send(f"❌ No encontré ningún miembro con ID `{member_id}` en este servidor.")
+                return await ctx.send(f" No encontré ningún miembro con ID `{member_id}` en este servidor.")
         # Si es un nombre, usar fuzzy matching
         else:
             matches = find_member_fuzzy(ctx.guild, user_query)
 
             if not matches:
                 return await ctx.send(
-                    f"❌ No encontré ningún usuario similar a: **{user_query}**\n💡 Intenta con el nombre exacto o una mención.")
+                    f" No encontré ningún usuario similar a: **{user_query}**\n Intenta con el nombre exacto o una mención.")
 
             # Si hay múltiples coincidencias, mostrar opciones
             if len(matches) > 1:
                 embed = discord.Embed(
-                    title="🔍 Múltiples coincidencias encontradas",
+                    title=" Múltiples coincidencias encontradas",
                     description=f"Encontré varios usuarios similares a **{user_query}**:",
                     color=discord.Color.orange()
                 )
@@ -336,21 +336,21 @@ async def block(ctx, *, user_query: str):
 
             # Una sola coincidencia
             member, score = matches[0]
-            await ctx.send(f"🔍 Usuario encontrado: **{member.display_name}** (similitud: {score}%)")
+            await ctx.send(f" Usuario encontrado: **{member.display_name}** (similitud: {score}%)")
 
         # Validaciones
         if member.id == bot.owner_id:
-            return await ctx.send("❌ No puedes bloquearte a ti mismo.")
+            return await ctx.send(" No puedes bloquearte a ti mismo.")
 
         if member.id in blocked_user_ids:
-            return await ctx.send(f"⚠️ {member.mention} ya está bloqueado.")
+            return await ctx.send(f" {member.mention} ya está bloqueado.")
 
         # Bloquear usuario
         blocked_user_ids.add(member.id)
         save_blocked_users()
 
         embed = discord.Embed(
-            title="🚫 Usuario Bloqueado",
+            title=" Usuario Bloqueado",
             description=f"{member.mention} ha sido bloqueado exitosamente.",
             color=discord.Color.red()
         )
@@ -361,7 +361,7 @@ async def block(ctx, *, user_query: str):
         await ctx.send(embed=embed)
 
     except Exception as e:
-        await ctx.send(f"❌ Error al bloquear usuario: {e}")
+        await ctx.send(f" Error al bloquear usuario: {e}")
 
 
 @bot.command()
@@ -385,25 +385,25 @@ async def unblock(ctx, *, user_query: str):
             member_id = int(user_query)
             member = ctx.guild.get_member(member_id)
             if not member:
-                return await ctx.send(f"❌ No encontré ningún miembro con ID `{member_id}` en este servidor.")
+                return await ctx.send(f" No encontré ningún miembro con ID `{member_id}` en este servidor.")
         # Si es un nombre, usar fuzzy matching
         else:
             matches = find_member_fuzzy(ctx.guild, user_query)
 
             if not matches:
                 return await ctx.send(
-                    f"❌ No encontré ningún usuario similar a: **{user_query}**\n💡 Intenta con el nombre exacto o una mención.")
+                    f" No encontré ningún usuario similar a: **{user_query}**\n Intenta con el nombre exacto o una mención.")
 
             # Si hay múltiples coincidencias
             if len(matches) > 1:
                 embed = discord.Embed(
-                    title="🔍 Múltiples coincidencias encontradas",
+                    title=" Múltiples coincidencias encontradas",
                     description=f"Encontré varios usuarios similares a **{user_query}**:",
                     color=discord.Color.orange()
                 )
 
                 for i, (m, score) in enumerate(matches[:5], 1):
-                    status = "🚫 Bloqueado" if m.id in blocked_user_ids else "✅ No bloqueado"
+                    status = " Bloqueado" if m.id in blocked_user_ids else " No bloqueado"
                     embed.add_field(
                         name=f"{i}. {m.display_name} {status}",
                         value=f"`{m.name}` (ID: `{m.id}`) - Similitud: {score}%",
@@ -415,18 +415,18 @@ async def unblock(ctx, *, user_query: str):
 
             # Una sola coincidencia
             member, score = matches[0]
-            await ctx.send(f"🔍 Usuario encontrado: **{member.display_name}** (similitud: {score}%)")
+            await ctx.send(f" Usuario encontrado: **{member.display_name}** (similitud: {score}%)")
 
         # Validar que esté bloqueado
         if member.id not in blocked_user_ids:
-            return await ctx.send(f"⚠️ {member.mention} no está en la lista de bloqueados.")
+            return await ctx.send(f" {member.mention} no está en la lista de bloqueados.")
 
         # Desbloquear usuario
         blocked_user_ids.remove(member.id)
         save_blocked_users()
 
         embed = discord.Embed(
-            title="🔓 Usuario Desbloqueado",
+            title=" Usuario Desbloqueado",
             description=f"{member.mention} ha sido desbloqueado exitosamente.",
             color=discord.Color.green()
         )
@@ -437,7 +437,7 @@ async def unblock(ctx, *, user_query: str):
         await ctx.send(embed=embed)
 
     except Exception as e:
-        await ctx.send(f"❌ Error al desbloquear usuario: {e}")
+        await ctx.send(f" Error al desbloquear usuario: {e}")
 
 
 @bot.command()
@@ -445,10 +445,10 @@ async def unblock(ctx, *, user_query: str):
 async def blocklist(ctx):
     """Muestra la lista de usuarios bloqueados."""
     if not blocked_user_ids:
-        return await ctx.send("📋 La lista de bloqueados está vacía.")
+        return await ctx.send(" La lista de bloqueados está vacía.")
 
     embed = discord.Embed(
-        title="🚫 Lista de Usuarios Bloqueados",
+        title=" Lista de Usuarios Bloqueados",
         description=f"Total: {len(blocked_user_ids)} usuario(s)",
         color=discord.Color.red()
     )
@@ -499,32 +499,32 @@ async def sync(ctx, type: str = None):
     ¿sync guild -> Sincronización inmediata en este servidor
     ¿sync clear -> Borra los comandos globales
     """
-    msg = await ctx.send("🔄 Sincronizando...")
+    msg = await ctx.send(" Sincronizando...")
     try:
         if type == "guild":
             bot.tree.copy_global_to(guild=ctx.guild)
             synced = await bot.tree.sync(guild=ctx.guild)
-            await msg.edit(content=f"✅ Sincronizados {len(synced)} comandos en este servidor (Instantáneo).")
+            await msg.edit(content=f" Sincronizados {len(synced)} comandos en este servidor (Instantáneo).")
         elif type == "clear":
             bot.tree.clear_commands(guild=None)
             await bot.tree.sync()
-            await msg.edit(content="🗑️ Comandos globales borrados. Reinicia Discord para ver los cambios.")
+            await msg.edit(content=" Comandos globales borrados. Reinicia Discord para ver los cambios.")
         else:
             synced = await bot.tree.sync()
-            await msg.edit(content=f"🌐 Sincronizados {len(synced)} comandos globales. Puede tardar hasta 1h en actualizarse.")
+            await msg.edit(content=f" Sincronizados {len(synced)} comandos globales. Puede tardar hasta 1h en actualizarse.")
             
     except Exception as e:
-        await msg.edit(content=f"❌ Error: {e}")
+        await msg.edit(content=f" Error: {e}")
 
 
 # --- Ejecución del Bot ---
 if __name__ == "__main__":
     if not DISCORD_TOKEN:
-        print("🚨 ERROR: No se encontró la variable 'DISCORD_TOKEN' en el archivo .env.")
+        print(" ERROR: No se encontró la variable 'DISCORD_TOKEN' en el archivo .env.")
     else:
         try:
             bot.run(DISCORD_TOKEN)
         except discord.errors.LoginFailure:
-            print("🚨 ERROR: El token de Discord no es válido.")
+            print(" ERROR: El token de Discord no es válido.")
         except Exception as e:
-            print(f"🚨 Ocurrió un error inesperado al iniciar el bot: {e}")
+            print(f" Ocurrió un error inesperado al iniciar el bot: {e}")

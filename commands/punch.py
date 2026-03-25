@@ -86,7 +86,7 @@ class PunchCog(commands.Cog):
                             gif = random.choice(data["results"])
                             return gif["media_formats"]["gif"]["url"]
         except Exception as e:
-            print(f"⚠️ Error obteniendo GIF de Tenor: {e}")
+            print(f" Error obteniendo GIF de Tenor: {e}")
         
         return None
 
@@ -111,7 +111,7 @@ class PunchCog(commands.Cog):
                             gif = random.choice(data["data"])
                             return gif["images"]["original"]["url"]
         except Exception as e:
-            print(f"⚠️ Error obteniendo GIF de Giphy: {e}")
+            print(f" Error obteniendo GIF de Giphy: {e}")
         
         return None
 
@@ -132,7 +132,7 @@ class PunchCog(commands.Cog):
         
         # Si no hay APIs configuradas, usar fallback
         if not sources:
-            print("⚠️ No hay APIs configuradas (TENOR_API_KEY o GIPHY_API_KEY)")
+            print(" No hay APIs configuradas (TENOR_API_KEY o GIPHY_API_KEY)")
             return self._get_fallback_gif()
         
         # Mezclar las fuentes para alternar aleatoriamente
@@ -142,11 +142,11 @@ class PunchCog(commands.Cog):
         for source_name, source_func in sources:
             gif_url = await source_func(search_term)
             if gif_url:
-                print(f"✅ GIF obtenido de {source_name.upper()} con término: '{search_term}'")
+                print(f" GIF obtenido de {source_name.upper()} con término: '{search_term}'")
                 return gif_url
         
         # Si todas las APIs fallan, usar fallback
-        print("⚠️ Todas las APIs fallaron, usando GIF de respaldo")
+        print(" Todas las APIs fallaron, usando GIF de respaldo")
         return self._get_fallback_gif()
 
     def _get_fallback_gif(self) -> str:
@@ -189,7 +189,7 @@ class PunchCog(commands.Cog):
 
                 if not matches:
                     return await ctx.send(
-                        f"No encontré ningún usuario similar a: **{user_query}**\n💡 Intenta con el nombre exacto o una mención."
+                        f"No encontré ningún usuario similar a: **{user_query}**\n Intenta con el nombre exacto o una mención."
                     )
 
                 # Seleccionar el usuario con mayor similitud
@@ -220,7 +220,7 @@ class PunchCog(commands.Cog):
             await ctx.send(embed=embed)
 
         except Exception as e:
-            await ctx.send(f"❌ Error al ejecutar el comando: {e}")
+            await ctx.send(f" Error al ejecutar el comando: {e}")
 
     @app_commands.command(name="punch", description="Le da un puñetazo a un usuario")
     @app_commands.describe(usuario="El usuario al que quieres golpear")
@@ -229,7 +229,7 @@ class PunchCog(commands.Cog):
         
         # Validaciones
         if usuario.id == interaction.user.id:
-            return await interaction.response.send_message(" 🐒", ephemeral=True)
+            return await interaction.response.send_message(" ", ephemeral=True)
 
         if usuario.id == self.bot.user.id:
             return await interaction.response.send_message("FUERA", ephemeral=True)
@@ -257,4 +257,4 @@ class PunchCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(PunchCog(bot))
-    print("✅ PunchCog (commands.punch) cargado correctamente.")
+    print(" PunchCog (commands.punch) cargado correctamente.")

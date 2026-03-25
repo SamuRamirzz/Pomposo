@@ -29,7 +29,7 @@ class Moderacion(commands.Cog):
             await canal_sucio.delete()
 
             # Y no mandamos mensaje al final como pediste
-            # todo silencioso shhh 🤫
+            # todo silencioso shhh 
 
         except Exception as e:
             # si falla pos nimodo, avisamos en consola

@@ -31,7 +31,7 @@ class PomposoSink(voice_recv.AudioSink):
         # Inicializar buffer para usuario si no existe
         if user.id not in self.buffers:
             self.buffers[user.id] = {'data': bytearray(), 'last_packet': now}
-            print(f"🎤 Escuchando a {user.name}...")
+            print(f" Escuchando a {user.name}...")
 
         # Append data (stereo 16-bit 48kHz PCM)
         self.buffers[user.id]['data'].extend(data.pcm)
@@ -79,7 +79,7 @@ class VoiceChat(commands.Cog):
         user = self.bot.get_user(user_id) or await self.bot.fetch_user(user_id)
         if not user: return
 
-        print(f"🔄 Transcribiendo {len(pcm_data)} bytes de {user.name}...")
+        print(f" Transcribiendo {len(pcm_data)} bytes de {user.name}...")
         
         try:
             # Convertir PCM a WAV en memoria
@@ -112,7 +112,7 @@ class VoiceChat(commands.Cog):
             try:
                 # Usar Google Speech Recognition (GRATIS, pero a veces lento)
                 text = await self.bot.loop.run_in_executor(None, lambda: r.recognize_google(audio, language="es-ES"))
-                print(f"👂 {user.name} dijo: '{text}'")
+                print(f" {user.name} dijo: '{text}'")
                 
                 # ENVIAR AL CEREBRO
                 if "pomposo" in text.lower() or "gei" in text.lower() or self.listening_states.get(guild_id, {}).get('state') == 'ACTIVE':
@@ -158,7 +158,7 @@ class VoiceChat(commands.Cog):
             self.sinks[interaction.guild.id] = sink
             vc.listen(sink)
 
-            print(f"🔊 Pomposo conectado y escuchando en {channel.name}")
+            print(f" Pomposo conectado y escuchando en {channel.name}")
             
             await interaction.channel.send("ola soi um pomposito jeje (ya te escucho)")
 
@@ -193,7 +193,7 @@ class VoiceChat(commands.Cog):
             
             # Si el canal se quedó vacío (solo el bot)
             if bot_channel and len(bot_channel.members) == 1: # 1 porque el bot cuenta como miembro
-                print(f"🏃 Pomposo saliendo de {bot_channel.name} por inactividad.")
+                print(f" Pomposo saliendo de {bot_channel.name} por inactividad.")
                 
                 # Enviar despedida al canal de texto asociado (si es posible determinar cuál)
                 # O usar TTS antes de salir
@@ -227,7 +227,7 @@ class VoiceChat(commands.Cog):
         if current_state == 'WAITING':
             # Detectar keywords de activación
             if any(k in text_lower for k in ['pomposo', 'pomposito']):
-                print(f"👂 Activado por {user.name}: '{text}'")
+                print(f" Activado por {user.name}: '{text}'")
                 
                 # Cambiar estado a ACTIVO para este usuario
                 self.listening_states[guild_id]['state'] = 'ACTIVE'
@@ -261,7 +261,7 @@ class VoiceChat(commands.Cog):
 
     async def handle_brain_interaction(self, guild_id, user, text, image_url):
         """Envía texto al cerebro y gestiona la respuesta."""
-        print(f"🧠 Procesando para {user.name}: {text}")
+        print(f" Procesando para {user.name}: {text}")
         
         # Generar respuesta (ahora es un dict)
         response_data = await self.brain.generate_response(text, image_url)
@@ -276,7 +276,7 @@ class VoiceChat(commands.Cog):
         if "{user}" in chat_text:
             chat_text = chat_text.replace("{user}", user.display_name)
         
-        print(f"🤖 Respuesta Chat/Voz (Pomposo Style): {chat_text}")
+        print(f" Respuesta Chat/Voz (Pomposo Style): {chat_text}")
         
         # Opcional: Escribir en chat también
         # await self.bot.get_channel(channel_id).send(chat_text) 
@@ -293,7 +293,7 @@ class VoiceChat(commands.Cog):
         if not vc or not vc.is_connected():
             return
 
-        print(f"🎤 Generando TTS Neural2 (Google): {text}")
+        print(f" Generando TTS Neural2 (Google): {text}")
         try:
             # Cliente de Google TTS
             # Configuración explícita de credenciales para evitar hang en Windows
@@ -307,7 +307,7 @@ class VoiceChat(commands.Cog):
             try:
                 client = texttospeech.TextToSpeechClient()
             except Exception as e:
-                print(f"❌ Error Auth Google: {e}")
+                print(f" Error Auth Google: {e}")
                 return
 
             input_text = texttospeech.SynthesisInput(text=text)
@@ -346,7 +346,7 @@ class VoiceChat(commands.Cog):
             ffmpeg_path = r"c:\Users\User\Downloads\ffmpeg-8.0.1-essentials_build\ffmpeg-8.0.1-essentials_build\bin\ffmpeg.exe"
             
             if not os.path.exists(ffmpeg_path):
-                print(f"❌ ERROR CRÍTICO: No se encontró FFmpeg en: {ffmpeg_path}")
+                print(f" ERROR CRÍTICO: No se encontró FFmpeg en: {ffmpeg_path}")
                 # Intentar fallback al sistema o notificar
             
             source = discord.FFmpegPCMAudio(filename, executable=ffmpeg_path)
@@ -357,15 +357,15 @@ class VoiceChat(commands.Cog):
                 try:
                     if os.path.exists(filename):
                         os.remove(filename)
-                        print("🗑️ Archivo TTS eliminado.")
+                        print(" Archivo TTS eliminado.")
                 except Exception as e:
                     print(f"Error borrando archivo: {e}")
 
             vc.play(source, after=cleanup)
             
         except Exception as e:
-            print(f"❌ Error en Google Cloud TTS: {e}")
-            print("💡 Verifica que 'google-credentials.json' esté configurado o la variable de entorno GOOGLE_APPLICATION_CREDENTIALS.")
+            print(f" Error en Google Cloud TTS: {e}")
+            print(" Verifica que 'google-credentials.json' esté configurado o la variable de entorno GOOGLE_APPLICATION_CREDENTIALS.")
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -382,7 +382,7 @@ class VoiceChat(commands.Cog):
             # Si el usuario escribe algo con "pomposo" o palabras clave, lo procesamos como si lo hubiera dicho.
             content_lower = message.content.lower()
             if "pomposo" in content_lower or "pomposito" in content_lower or "gei" in content_lower:
-                print(f"👂 Activado por Texto de {message.author.name}: '{message.content}'")
+                print(f" Activado por Texto de {message.author.name}: '{message.content}'")
                 await self.process_incoming_audio(
                     message.guild.id,
                     message.author,
@@ -395,7 +395,7 @@ class VoiceChat(commands.Cog):
                 # Verificar si es imagen
                 image_url = message.attachments[0].url
                 if any(ext in image_url.lower() for ext in ['.png', '.jpg', '.jpeg', '.webp']):
-                    print(f"👁️ Pomposo vio una imagen de {message.author.name}")
+                    print(f" Pomposo vio una imagen de {message.author.name}")
                     
                     # Inyectar imagen al flujo de voz
                     await self.process_incoming_audio(

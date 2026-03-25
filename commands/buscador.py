@@ -13,10 +13,10 @@ class BuscadorCog(commands.Cog):
         # Crear la vista con el selector de servidores
         view = GuildSelectView(self.bot)
         if not view.options:
-             await interaction.response.send_message("❌ No estoy en ningún servidor (o algo salió mal).", ephemeral=True)
+             await interaction.response.send_message(" No estoy en ningún servidor (o algo salió mal).", ephemeral=True)
              return
              
-        await interaction.response.send_message("🌍 Selecciona un servidor para buscar:", view=view, ephemeral=True)
+        await interaction.response.send_message(" Selecciona un servidor para buscar:", view=view, ephemeral=True)
 
 class GuildSelectView(discord.ui.View):
     def __init__(self, bot):
@@ -41,7 +41,7 @@ class GuildSelectView(discord.ui.View):
         guild = self.bot.get_guild(guild_id)
         
         if not guild:
-            await interaction.response.send_message("❌ No pude encontrar ese servidor.", ephemeral=True)
+            await interaction.response.send_message(" No pude encontrar ese servidor.", ephemeral=True)
             return
             
         # Abrir el modal para pedir la palabra clave
@@ -92,7 +92,7 @@ class KeywordModal(discord.ui.Modal, title="Búsqueda de Mensajes"):
                 limit = None # Sin límite de cantidad si es por fecha
                 
             except ValueError:
-                await interaction.followup.send("❌ La fecha no tiene el formato correcto (DD/MM/AAAA).", ephemeral=True)
+                await interaction.followup.send(" La fecha no tiene el formato correcto (DD/MM/AAAA).", ephemeral=True)
                 return
 
         MAX_RESULTS = 25
@@ -126,7 +126,7 @@ class KeywordModal(discord.ui.Modal, title="Búsqueda de Mensajes"):
         if not found_messages:
             scope_msg = f"del día {date_str}" if date_str else f"recientes ({limit} por canal)"
             await interaction.followup.send(
-                f"❌ No encontré mensajes con **'{self.keyword.value}'** {scope_msg} en **{self.guild.name}**.",
+                f" No encontré mensajes con **'{self.keyword.value}'** {scope_msg} en **{self.guild.name}**.",
                 ephemeral=True
             )
             return
@@ -139,7 +139,7 @@ class KeywordModal(discord.ui.Modal, title="Búsqueda de Mensajes"):
         
         view = MessageSelectView(display_messages)
         await interaction.followup.send(
-            f"✅ Encontré {len(found_messages)} coincidencia(s). Selecciona un mensaje para ver el contexto:",
+            f" Encontré {len(found_messages)} coincidencia(s). Selecciona un mensaje para ver el contexto:",
             view=view,
             ephemeral=True
         )
@@ -180,7 +180,7 @@ class MessageSelectView(discord.ui.View):
         
         if not original_msg:
              # Fallback por si la referencia se perdió (raro en esta ejecución)
-             await interaction.followup.send("❌ Error: No se pudo recuperar el mensaje original.", ephemeral=True)
+             await interaction.followup.send(" Error: No se pudo recuperar el mensaje original.", ephemeral=True)
              return
 
         # Obtener contexto (15 antes y 15 después -> aprox 31 total centrado)
@@ -198,7 +198,7 @@ class MessageSelectView(discord.ui.View):
                 
                 # Resaltar el mensaje seleccionado
                 if m.id == original_msg.id:
-                    output_lines.append(f"👉 {base_line}  <-- SELECCIONADO")
+                    output_lines.append(f" {base_line}  <-- SELECCIONADO")
                 else:
                     output_lines.append(f"   {base_line}")
             
@@ -211,14 +211,14 @@ class MessageSelectView(discord.ui.View):
                 # Si es muy largo, enviar archivo
                 f = io.BytesIO(full_text.encode('utf-8'))
                 await interaction.followup.send(
-                    "📄 El contexto es extenso, aquí tienes el archivo:",
+                    " El contexto es extenso, aquí tienes el archivo:",
                     file=discord.File(f, filename="contexto_mensaje.txt"),
                     ephemeral=True
                 )
                 
         except Exception as e:
-            await interaction.followup.send(f"❌ Error al obtener contexto: {e}", ephemeral=True)
+            await interaction.followup.send(f" Error al obtener contexto: {e}", ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(BuscadorCog(bot))
-    print("✅ Module commands.buscador loaded")
+    print(" Module commands.buscador loaded")

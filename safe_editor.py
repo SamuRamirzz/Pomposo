@@ -1,5 +1,5 @@
 """
-SAFE EDITOR V2 - El guardaespaldas de Pomposo 🛡️
+SAFE EDITOR V2 - El guardaespaldas de Pomposo 
 Sistema de protección de código con clasificación inteligente de errores.
 
 Pipeline de seguridad:
@@ -34,9 +34,9 @@ BACKUP_DIR.mkdir(exist_ok=True)
 STAGING_DIR.mkdir(exist_ok=True)
 
 
-# ═══════════════════════════════════════════
+# 
 #  CLASIFICADOR DE ERRORES
-# ═══════════════════════════════════════════
+# 
 
 class ErrorSeverity(Enum):
     """Niveles de severidad para errores detectados."""
@@ -146,10 +146,10 @@ class ErrorClassifier:
     def get_severity_emoji(cls, severity: ErrorSeverity) -> str:
         """Retorna el emoji apropiado para cada nivel de severidad."""
         return {
-            ErrorSeverity.AUTO_FIX: "🔧",
-            ErrorSeverity.SUGGEST_FIX: "💡",
-            ErrorSeverity.NOTIFY_ONLY: "🚨",
-        }.get(severity, "❓")
+            ErrorSeverity.AUTO_FIX: "",
+            ErrorSeverity.SUGGEST_FIX: "",
+            ErrorSeverity.NOTIFY_ONLY: "",
+        }.get(severity, "")
     
     @classmethod
     def get_severity_label(cls, severity: ErrorSeverity) -> str:
@@ -161,9 +161,9 @@ class ErrorClassifier:
         }.get(severity, "Desconocido")
 
 
-# ═══════════════════════════════════════════
+# 
 #  SAFE EDITOR V2
-# ═══════════════════════════════════════════
+# 
 
 class SafeEditor:
     """
@@ -193,7 +193,7 @@ class SafeEditor:
         backup_path = BACKUP_DIR / backup_name
         
         shutil.copy2(target, backup_path)
-        print(f"📦 Backup creado: {backup_path}")
+        print(f" Backup creado: {backup_path}")
         return str(backup_path)
     
     def write_staged_code(self, code: str, filename: str = "propuesta.py") -> str:
@@ -203,7 +203,7 @@ class SafeEditor:
         staged_path = STAGING_DIR / filename
         with open(staged_path, 'w', encoding='utf-8') as f:
             f.write(code)
-        print(f"📝 Código guardado en staging: {staged_path}")
+        print(f" Código guardado en staging: {staged_path}")
         return str(staged_path)
     
     def validate_syntax(self, file_path: str) -> tuple:
@@ -221,13 +221,13 @@ class SafeEditor:
             
         except SyntaxError as e:
             error_msg = f"Línea {e.lineno}: {e.msg}\n```\n{e.text}```" if e.text else str(e)
-            return False, f"🚫 Error de sintaxis: {error_msg}"
+            return False, f" Error de sintaxis: {error_msg}"
             
         except py_compile.PyCompileError as e:
-            return False, f"🚫 Error de compilación: {e}"
+            return False, f" Error de compilación: {e}"
             
         except Exception as e:
-            return False, f"🚫 Error inesperado: {e}"
+            return False, f" Error inesperado: {e}"
     
     def validate_deep(self, file_path: str) -> tuple:
         """
@@ -253,12 +253,12 @@ class SafeEditor:
             )
             
             if result.returncode != 0:
-                return False, f"🚫 Error en validación profunda:\n```\n{result.stderr[:500]}```"
+                return False, f" Error en validación profunda:\n```\n{result.stderr[:500]}```"
             
             return True, None
             
         except subprocess.TimeoutExpired:
-            return False, "🚫 La validación tardó demasiado (posible loop infinito)"
+            return False, " La validación tardó demasiado (posible loop infinito)"
         except Exception as e:
             # Si el subprocess falla, al menos la sintaxis estaba bien
             return True, None
@@ -279,7 +279,7 @@ class SafeEditor:
         target = Path(target_path)
         
         if not source.exists():
-            return False, "❌ No hay código en staging."
+            return False, " No hay código en staging."
         
         # Paso 1: Validar sintaxis
         is_valid, error = self.validate_deep(str(source))
@@ -291,7 +291,7 @@ class SafeEditor:
         if target.exists():
             backup_path = self.backup_file(str(target))
             if not backup_path:
-                return False, "❌ No se pudo crear backup. Abortando."
+                return False, " No se pudo crear backup. Abortando."
         
         # Paso 3: Copiar código validado
         try:
@@ -302,13 +302,13 @@ class SafeEditor:
             action = "auto-fix" if auto_fix else "manual"
             self._add_to_history(action, str(target), backup_path)
             
-            return True, f"✅ Código aplicado exitosamente a `{target.name}`"
+            return True, f" Código aplicado exitosamente a `{target.name}`"
             
         except Exception as e:
             # Intentar restaurar si algo falla
             if backup_path and target.exists():
                 self.restore_latest_backup(str(target))
-            return False, f"❌ Error al aplicar código: {e}"
+            return False, f" Error al aplicar código: {e}"
     
     def restore_latest_backup(self, target_path: str) -> tuple:
         """Restaura el backup más reciente de un archivo."""
@@ -318,15 +318,15 @@ class SafeEditor:
         backups = list(BACKUP_DIR.glob(f"{stem}.bak_*{target.suffix}"))
         
         if not backups:
-            return False, f"❌ No hay backups para `{target.name}`."
+            return False, f" No hay backups para `{target.name}`."
         
         latest = max(backups, key=lambda p: p.stat().st_mtime)
         
         try:
             shutil.copy2(latest, target)
-            return True, f"✅ Restaurado desde `{latest.name}`"
+            return True, f" Restaurado desde `{latest.name}`"
         except Exception as e:
-            return False, f"❌ Error al restaurar: {e}"
+            return False, f" Error al restaurar: {e}"
     
     def list_backups(self, filename: str = None) -> list:
         """Lista todos los backups disponibles."""
@@ -374,7 +374,7 @@ class SafeEditor:
         if patch_file.exists():
             patch_file.unlink()
     
-    # ═══ Historial de Cambios ═══
+    #  Historial de Cambios 
     
     def _add_to_history(self, action: str, target: str, backup: str = None):
         """Registra una acción en el historial."""
@@ -393,7 +393,7 @@ class SafeEditor:
         """Retorna el historial de cambios recientes."""
         return list(reversed(self.change_history))
     
-    # ═══ Utilidades ═══
+    #  Utilidades 
     
     @staticmethod
     def extract_code_from_markdown(text: str) -> str:

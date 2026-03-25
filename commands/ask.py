@@ -16,11 +16,11 @@ client = None
 if GEMINI_API_KEY:
     try:
         client = genai.Client(api_key=GEMINI_API_KEY)
-        print("✅ Conectado a Gemini (con Google Search y Conciencia Temporal).")
+        print(" Conectado a Gemini (con Google Search y Conciencia Temporal).")
     except Exception as e:
-        print(f"⚠️ Error al inicializar Gemini: {e}")
+        print(f" Error al inicializar Gemini: {e}")
 else:
-    print("⚠️  Advertencia: Falta 'GEMINI_API_KEY' en .env.")
+    print("  Advertencia: Falta 'GEMINI_API_KEY' en .env.")
 
 # --- Constantes ---
 MEMORY_FILE = "bot_memory.txt"
@@ -134,7 +134,7 @@ class AskCog(commands.Cog):
     @commands.command(name="ask", description="Habla con la IA.")
     async def ask(self, ctx: commands.Context, *, pregunta: str = ""):
         if not client:
-            await ctx.send("⚠️ Error: API de Gemini no configurada.", ephemeral=True)
+            await ctx.send(" Error: API de Gemini no configurada.", ephemeral=True)
             return
         
         pregunta_original = pregunta.strip()
@@ -190,11 +190,11 @@ class AskCog(commands.Cog):
             if "un" in palabra_clave:
                 cfg["auto_channel_id"] = None
                 self.bot.auto_reply_channel_id = None
-                await ctx.reply("🛑 Auto-respuesta off.")
+                await ctx.reply(" Auto-respuesta off.")
             else:
                 cfg["auto_channel_id"] = ctx.channel.id
                 self.bot.auto_reply_channel_id = ctx.channel.id
-                await ctx.reply(f"✅ Auto-respuesta en #{ctx.channel.name}")
+                await ctx.reply(f" Auto-respuesta en #{ctx.channel.name}")
             save_config(cfg)
             return
 
@@ -236,19 +236,33 @@ class AskCog(commands.Cog):
                             if img_bytes:
                                 parts.append(types.Part.from_bytes(data=img_bytes, mime_type=mime_type))
                                 image_count += 1
-                                print(f"📷 Imagen adjuntada: {attachment.filename} ({mime_type})")
+                                print(f" Imagen adjuntada: {attachment.filename} ({mime_type})")
 
-                # 4. Herramientas
-                tools = [types.Tool(google_search=types.GoogleSearch())]
+                # 4. Herramientas (Google Search solo cuando se necesita)
+                SEARCH_KEYWORDS = [
+                    'quien', 'quién', 'cuando', 'cuándo', 'donde', 'dónde',
+                    'noticias', 'precio', 'clima', 'temperatura', 'ganó',
+                    'resultado', 'estreno', 'lanzamiento', 'actualidad',
+                    'hoy', 'ayer', 'mañana', 'fecha', 'hora',
+                    'cuanto', 'cuánto', 'cuántos', 'vale', 'cuesta',
+                    'qué es', 'que es', 'define', 'significado',
+                ]
+                pregunta_lower_check = pregunta_original.lower()
+                needs_search = any(kw in pregunta_lower_check for kw in SEARCH_KEYWORDS)
+                
+                tools = [types.Tool(google_search=types.GoogleSearch())] if needs_search else []
 
                 # 5. Ejecutar IA
+                config_kwargs = {
+                    'system_instruction': sys_prompt,
+                    'temperature': 0.8,
+                }
+                if tools:
+                    config_kwargs['tools'] = tools
+
                 chat = client.chats.create(
-                    model='gemini-1.5-flash',
-                    config=types.GenerateContentConfig(
-                        system_instruction=sys_prompt,
-                        tools=tools,
-                        temperature=0.8
-                    ),
+                    model='gemini-3.1-flash-lite-preview',
+                    config=types.GenerateContentConfig(**config_kwargs),
                     history=gemini_hist
                 )
 
@@ -284,7 +298,7 @@ class AskCog(commands.Cog):
                 traceback.print_exc()
                 # Enviar mensaje limpio al usuario
                 error_embed = discord.Embed(
-                    title="❌ Error de IA",
+                    title=" Error de IA",
                     description=f"No pude contactar con la IA.",
                     color=discord.Color.red()
                 )
@@ -296,4 +310,4 @@ class AskCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(AskCog(bot))
-    print("✅ Commands.ask cargado.")
+    print(" Commands.ask cargado.")

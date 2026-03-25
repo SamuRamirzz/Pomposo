@@ -4,7 +4,7 @@ from discord import app_commands
 import aiohttp
 import random
 
-# --- ⚙️ CONFIGURACIÓN ---
+# ---  CONFIGURACIÓN ---
 BOT_VERSION = "1.3.0v"
 BOT_NAME = "Pomposo"
 BOT_CREATOR = "Drake (drake_dev#0)"
@@ -20,46 +20,46 @@ class InfoMenu(discord.ui.Select):
 
         options = [
             discord.SelectOption(
-                label="📋 Información General",
+                label=" Información General",
                 description="Información sobre el bot",
-                emoji="📋",
+                emoji="",
                 value="info",
                 default=True
             ),
             discord.SelectOption(
-                label="❓ Ayuda - Comandos",
+                label=" Ayuda - Comandos",
                 description="Lista de comandos disponibles",
-                emoji="❓",
+                emoji="",
                 value="help"
             ),
             discord.SelectOption(
-                label="⚠️ Errores Comunes",
+                label=" Errores Comunes",
                 description="Soluciones a problemas frecuentes",
-                emoji="⚠️",
+                emoji="",
                 value="errors"
             ),
             discord.SelectOption(
-                label="📊 Estadísticas",
+                label=" Estadísticas",
                 description="Estadísticas del bot",
-                emoji="📊",
+                emoji="",
                 value="stats"
             ),
             discord.SelectOption(
-                label="🔗 Enlaces Útiles",
+                label=" Enlaces Útiles",
                 description="Links importantes y recursos",
-                emoji="🔗",
+                emoji="",
                 value="links"
             ),
             discord.SelectOption(
-                label="📝 Changelog",
+                label=" Changelog",
                 description="Cambios de la última versión",
-                emoji="📝",
+                emoji="",
                 value="changelog"
             )
         ]
 
         super().__init__(
-            placeholder="📂 Selecciona una sección...",
+            placeholder=" Selecciona una sección...",
             min_values=1,
             max_values=1,
             options=options
@@ -114,7 +114,7 @@ class InfoCog(commands.Cog):
                         if data and len(data) > 0:
                             return data[0]['url']
         except Exception as e:
-            print(f"⚠️ Error obteniendo gato: {e}")
+            print(f" Error obteniendo gato: {e}")
 
         # Fallback: lista de gatos de ejemplo
         fallback_cats = [
@@ -127,40 +127,40 @@ class InfoCog(commands.Cog):
     async def build_info_embed(self) -> discord.Embed:
         """Construye el embed de información general."""
         embed = discord.Embed(
-            title=f"📋 {BOT_NAME}",
+            title=f" {BOT_NAME}",
             description=BOT_DESCRIPTION,
             color=discord.Color.blue()
         )
 
         # Información del bot
         embed.add_field(
-            name="👤 Creador",
+            name=" Creador",
             value=BOT_CREATOR,
             inline=True
         )
 
         embed.add_field(
-            name="🏷️ Versión",
+            name=" Versión",
             value=f"`{BOT_VERSION}`",
             inline=True
         )
 
         embed.add_field(
-            name="🌐 Servidores",
+            name=" Servidores",
             value=f"`{len(self.bot.guilds)}`",
             inline=True
         )
 
         # Descripción resumida de comandos
         embed.add_field(
-            name="✨ Tipos de Comandos",
+            name=" Tipos de Comandos",
             value=(
-                "🤖 **Inteligencia Artificial** - Conversación y respuestas\n"
-                "🖼️ **Búsqueda** - Imágenes y videos\n"
-                "✏️ **Moderación** - Gestión de usuarios\n"
-                "🥊 **Diversión** - Interacciones divertidas\n"
-                "🎮 **Utilidades** - Herramientas varias\n\n"
-                "💡 Usa el menú para ver la lista completa de comandos"
+                " **Inteligencia Artificial** - Conversación y respuestas\n"
+                " **Búsqueda** - Imágenes y videos\n"
+                " **Moderación** - Gestión de usuarios\n"
+                " **Diversión** - Interacciones divertidas\n"
+                " **Utilidades** - Herramientas varias\n\n"
+                " Usa el menú para ver la lista completa de comandos"
             ),
             inline=False
         )
@@ -179,24 +179,24 @@ class InfoCog(commands.Cog):
     def build_help_embed(self) -> discord.Embed:
         """Construye el embed de ayuda con comandos."""
         embed = discord.Embed(
-            title="❓ Ayuda - Comandos Disponibles",
+            title=" Ayuda - Comandos Disponibles",
             description="Lista de todos los comandos del bot y su funcionalidad.",
             color=discord.Color.green()
         )
 
         # Comandos principales
         commands_list = [
-            ("🤖 `¿ask <pregunta>`",
+            (" `¿ask <pregunta>`",
              "Conversa con la IA. Puede responder preguntas, escribir código, crear historias y más."),
-            ("🖼️ `¿img <búsqueda>`", "Busca imágenes en Google. Navega entre 25 resultados con botones."),
-            ("🎥 `¿yt <búsqueda>`", "Busca videos en YouTube. Navega entre 20 resultados con información detallada."),
-            ("💰 `¿deal <juego>`", "Busca las mejores ofertas de un juego en tiendas online."),
-            ("📅 `¿agenda`", "Gestiona tareas y recordatorios inteligentes con IA."),
-            ("🎙️ `¿tts <personaje> <texto>`", "Genera audio TTS con voces de personajes usando FakeYou."),
-            ("✏️ `¿nick <usuario> <apodo>`", "Cambia el apodo de un usuario en el servidor."),
-            ("🥊 `¿punch <usuario>`", "Dale un puñetazo a alguien con un GIF de gatos peleando."),
-            ("🎮 `¿server`", "Panel de control para el servidor de Minecraft en Google Cloud."),
-            ("📋 `¿info`", "Muestra este panel de información y ayuda.")
+            (" `¿img <búsqueda>`", "Busca imágenes en Google. Navega entre 25 resultados con botones."),
+            (" `¿yt <búsqueda>`", "Busca videos en YouTube. Navega entre 20 resultados con información detallada."),
+            (" `¿deal <juego>`", "Busca las mejores ofertas de un juego en tiendas online."),
+            (" `¿agenda`", "Gestiona tareas y recordatorios inteligentes con IA."),
+            (" `¿tts <personaje> <texto>`", "Genera audio TTS con voces de personajes usando FakeYou."),
+            (" `¿nick <usuario> <apodo>`", "Cambia el apodo de un usuario en el servidor."),
+            (" `¿punch <usuario>`", "Dale un puñetazo a alguien con un GIF de gatos peleando."),
+            (" `¿server`", "Panel de control para el servidor de Minecraft en Google Cloud."),
+            (" `¿info`", "Muestra este panel de información y ayuda.")
         ]
 
         for cmd, desc in commands_list:
@@ -208,7 +208,7 @@ class InfoCog(commands.Cog):
 
         # Comandos del Arquitecto (solo dueño)
         embed.add_field(
-            name="🏗️ Comandos del Arquitecto (Solo Dueño)",
+            name=" Comandos del Arquitecto (Solo Dueño)",
             value=(
                 "`¿create <instrucción>` - Crea o edita código con IA\n"
                 "`¿ok` / `¿si` - Instala el código generado\n"
@@ -224,7 +224,7 @@ class InfoCog(commands.Cog):
 
         # Comandos adicionales
         embed.add_field(
-            name="💡 Tip",
+            name=" Tip",
             value="Todos los comandos también funcionan con `/` (slash commands). Ejemplo: `/img gatos`",
             inline=False
         )
@@ -239,14 +239,14 @@ class InfoCog(commands.Cog):
     def build_errors_embed(self) -> discord.Embed:
         """Construye el embed de errores comunes."""
         embed = discord.Embed(
-            title="⚠️ Errores Comunes y Soluciones",
+            title=" Errores Comunes y Soluciones",
             description="Soluciones a los problemas más frecuentes del bot.",
             color=discord.Color.orange()
         )
 
         # Error 1: Cuota API excedida
         embed.add_field(
-            name="🔴 Error #1: Cuota de API Excedida",
+            name=" Error #1: Cuota de API Excedida",
             value=(
                 "**Mensaje:** `Se me acabaron los créditos de búsqueda...` o `API Key inválida o límite de cuota excedido`\n\n"
                 "**Causa:** El bot alcanzó el límite diario de búsquedas en Google/YouTube.\n\n"
@@ -283,7 +283,7 @@ class InfoCog(commands.Cog):
     async def build_stats_embed(self) -> discord.Embed:
         """Construye el embed de estadísticas."""
         embed = discord.Embed(
-            title="📊 Estadísticas del Bot",
+            title=" Estadísticas del Bot",
             description="Información sobre el uso y rendimiento del bot.",
             color=discord.Color.purple()
         )
@@ -292,19 +292,19 @@ class InfoCog(commands.Cog):
         total_members = sum(guild.member_count for guild in self.bot.guilds)
 
         embed.add_field(
-            name="🌐 Servidores",
+            name=" Servidores",
             value=f"`{len(self.bot.guilds)}`",
             inline=True
         )
 
         embed.add_field(
-            name="👥 Usuarios Totales",
+            name=" Usuarios Totales",
             value=f"`{total_members:,}`",
             inline=True
         )
 
         embed.add_field(
-            name="💬 Canales",
+            name=" Canales",
             value=f"`{sum(len(guild.channels) for guild in self.bot.guilds)}`",
             inline=True
         )
@@ -314,29 +314,29 @@ class InfoCog(commands.Cog):
         slash_commands = len(self.bot.tree.get_commands())
 
         embed.add_field(
-            name="⚡ Comandos Tradicionales",
+            name=" Comandos Tradicionales",
             value=f"`{total_commands}`",
             inline=True
         )
 
         embed.add_field(
-            name="📱 Slash Commands",
+            name=" Slash Commands",
             value=f"`{slash_commands}`",
             inline=True
         )
 
         embed.add_field(
-            name="🔌 Extensiones",
+            name=" Extensiones",
             value=f"`{len(self.bot.extensions)}`",
             inline=True
         )
 
         # Latencia
         latency_ms = round(self.bot.latency * 1000)
-        latency_emoji = "🟢" if latency_ms < 100 else "🟡" if latency_ms < 200 else "🔴"
+        latency_emoji = "🟢" if latency_ms < 100 else "🟡" if latency_ms < 200 else ""
 
         embed.add_field(
-            name="📡 Latencia",
+            name=" Latencia",
             value=f"{latency_emoji} `{latency_ms} ms`",
             inline=True
         )
@@ -355,14 +355,14 @@ class InfoCog(commands.Cog):
     def build_links_embed(self) -> discord.Embed:
         """Construye el embed de enlaces útiles."""
         embed = discord.Embed(
-            title="🔗 Enlaces Útiles",
+            title=" Enlaces Útiles",
             description="Recursos y links importantes relacionados con el bot.",
             color=discord.Color.teal()
         )
 
         # Enlaces de configuración
         embed.add_field(
-            name="⚙️ Configuración de APIs",
+            name=" Configuración de APIs",
             value=(
                 "• [Google Cloud Console](https://console.cloud.google.com)\n"
                 "• [Custom Search Engine](https://programmablesearchengine.google.com)\n"
@@ -375,7 +375,7 @@ class InfoCog(commands.Cog):
 
         # Enlaces de desarrollo
         embed.add_field(
-            name="🛠️ Desarrollo",
+            name=" Desarrollo",
             value=(
                 "• [Discord.py Docs](https://discordpy.readthedocs.io)\n"
                 "• [Discord Developer Portal](https://discord.com/developers/applications)\n"
@@ -386,7 +386,7 @@ class InfoCog(commands.Cog):
 
         # Enlaces de soporte
         embed.add_field(
-            name="💬 Soporte y Comunidad",
+            name=" Soporte y Comunidad",
             value=(
                     "• **Creador:** Drake (drake_dev#0)\n"
                     "• **Versión:** " + BOT_VERSION + "\n"
@@ -397,7 +397,7 @@ class InfoCog(commands.Cog):
 
         # Tecnologías usadas
         embed.add_field(
-            name="🔧 Tecnologías",
+            name=" Tecnologías",
             value=(
                 "• **Discord.py** - Framework del bot\n"
                 "• **Google Cloud** - APIs de búsqueda\n"
@@ -420,14 +420,14 @@ class InfoCog(commands.Cog):
     def build_changelog_embed(self) -> discord.Embed:
         """Construye el embed del changelog."""
         embed = discord.Embed(
-            title="📝 Changelog - Versión 1.3.0",
+            title=" Changelog - Versión 1.3.0",
             description="¡Nueva actualización con varias mejoras y un nuevo comando!",
             color=discord.Color.gold()
         )
 
         # Nuevas funciones
         embed.add_field(
-            name="🆕 Nuevas Funciones",
+            name=" Nuevas Funciones",
             value=(
                 "• **`¿tts <personaje> <texto>`** - ¡Nuevo comando TTS!\n"
                 "  Genera audio con voces de personajes como Sans, Hornet, SpongeBob y más.\n"
@@ -439,7 +439,7 @@ class InfoCog(commands.Cog):
 
         # Mejoras
         embed.add_field(
-            name="✨ Mejoras",
+            name=" Mejoras",
             value=(
                 "• **Búsqueda de imágenes**: Ahora muestra 25 imágenes (antes 10)\n"
                 "• **Comando block**: Umbral de coincidencias ajustado para mayor precisión\n"
@@ -451,7 +451,7 @@ class InfoCog(commands.Cog):
 
         # Correcciones
         embed.add_field(
-            name="🔧 Ajustes Técnicos",
+            name=" Ajustes Técnicos",
             value=(
                 "• Optimización del fuzzy matching en comandos de moderación\n"
                 "• Mejor manejo de errores en comandos de búsqueda\n"
@@ -529,4 +529,4 @@ class InfoCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(InfoCog(bot))
-    print("✅ InfoCog (commands.info) cargado correctamente.")
+    print(" InfoCog (commands.info) cargado correctamente.")

@@ -23,9 +23,9 @@ if GEMINI_API_KEY:
     try:
         client = genai.Client(api_key=GEMINI_API_KEY)
     except Exception as e:
-        print(f"⚠️ Error al inicializar Gemini en agenda: {e}")
+        print(f" Error al inicializar Gemini en agenda: {e}")
 else:
-    print("⚠️ GEMINI_API_KEY no encontrada en agenda.py")
+    print(" GEMINI_API_KEY no encontrada en agenda.py")
 
 class AgendaCog(commands.Cog):
     def __init__(self, bot):
@@ -45,7 +45,7 @@ class AgendaCog(commands.Cog):
             with open(AGENDA_FILE, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception as e:
-            print(f"❌ Error cargando agenda: {e}")
+            print(f" Error cargando agenda: {e}")
             return {}
 
     def save_data(self):
@@ -54,7 +54,7 @@ class AgendaCog(commands.Cog):
             with open(AGENDA_FILE, 'w', encoding='utf-8') as f:
                 json.dump(self.data, f, indent=4, ensure_ascii=False)
         except Exception as e:
-            print(f"❌ Error guardando agenda: {e}")
+            print(f" Error guardando agenda: {e}")
 
     def get_user_data(self, user_id):
         """Obtiene o inicializa los datos de un usuario."""
@@ -132,7 +132,7 @@ class AgendaCog(commands.Cog):
         tasks_list.append(new_task)
         self.save_data()
         
-        msg = await ctx.send(f"✅ Tarea agregada: **{task_text}** (ID: {new_id})")
+        msg = await ctx.send(f" Tarea agregada: **{task_text}** (ID: {new_id})")
         await msg.delete(delay=18)
 
     @agenda.command(name="list")
@@ -143,11 +143,11 @@ class AgendaCog(commands.Cog):
         reminders_list = user_data.get("reminders", [])
         
         if not tasks_list and not reminders_list:
-            await ctx.send("📝 No tienes tareas ni recordatorios pendientes. ¡Eres libre!")
+            await ctx.send(" No tienes tareas ni recordatorios pendientes. ¡Eres libre!")
             return
 
         embed = discord.Embed(
-            title=f"📅 Agenda de {ctx.author.display_name}",
+            title=f" Agenda de {ctx.author.display_name}",
             color=discord.Color.blue()
         )
         
@@ -155,7 +155,7 @@ class AgendaCog(commands.Cog):
         pending_text = ""
         done_text = ""
         for t in tasks_list:
-            status_icon = "⬜" if t["status"] == "pending" else "✅"
+            status_icon = "" if t["status"] == "pending" else ""
             line = f"`#{t['id']}` {status_icon} {t['text']}\n"
             if t["status"] == "pending":
                 pending_text += line
@@ -163,7 +163,7 @@ class AgendaCog(commands.Cog):
                 done_text += line
                 
         if pending_text:
-            embed.add_field(name="📌 Tareas Por Hacer", value=pending_text, inline=False)
+            embed.add_field(name=" Tareas Por Hacer", value=pending_text, inline=False)
         
         # Recordatorios
         reminders_text = ""
@@ -172,15 +172,15 @@ class AgendaCog(commands.Cog):
             try:
                 dt = datetime.datetime.fromisoformat(r['timestamp'])
                 time_str = dt.strftime("%d/%m %I:%M %p")
-                reminders_text += f"⏰ **{time_str}**: {r['reason']}\n"
+                reminders_text += f" **{time_str}**: {r['reason']}\n"
             except:
                 continue
         
         if reminders_text:
-            embed.add_field(name="🔔 Próximos Recordatorios", value=reminders_text, inline=False)
+            embed.add_field(name=" Próximos Recordatorios", value=reminders_text, inline=False)
 
         if done_text:
-            embed.add_field(name="✅ Completadas", value=done_text, inline=False)
+            embed.add_field(name=" Completadas", value=done_text, inline=False)
             
         embed.set_footer(text="Comandos: ¿agenda add/check/del/recordar | ¿agenda para ver todo")
         await ctx.send(embed=embed)
@@ -189,7 +189,7 @@ class AgendaCog(commands.Cog):
     async def check_task(self, ctx, *, query: str = None):
         """Marca una tarea como completada. Uso: ¿agenda check 1 o ¿agenda check comprar pan"""
         if not query:
-            msg = await ctx.send("❌ **Error de sintaxis**\n» Uso: `¿agenda check <id o texto>`\n» Ejemplo: `¿agenda check 1`")
+            msg = await ctx.send(" **Error de sintaxis**\n» Uso: `¿agenda check <id o texto>`\n» Ejemplo: `¿agenda check 1`")
             await msg.delete(delay=18)
             return
             
@@ -204,7 +204,7 @@ class AgendaCog(commands.Cog):
                     t["status"] = "done" if t["status"] == "pending" else "pending"
                     self.save_data()
                     status_msg = "completada" if t["status"] == "done" else "pendiente"
-                    msg = await ctx.send(f"✅ Tarea #{task_id} marcada como **{status_msg}**.")
+                    msg = await ctx.send(f" Tarea #{task_id} marcada como **{status_msg}**.")
                     await msg.delete(delay=18)
                     return
         except ValueError:
@@ -223,18 +223,18 @@ class AgendaCog(commands.Cog):
                 best_match["status"] = "done" if best_match["status"] == "pending" else "pending"
                 self.save_data()
                 status_msg = "completada" if best_match["status"] == "done" else "pendiente"
-                msg = await ctx.send(f"✅ Tarea #{best_match['id']} marcada como **{status_msg}**: {best_match['text']}")
+                msg = await ctx.send(f" Tarea #{best_match['id']} marcada como **{status_msg}**: {best_match['text']}")
                 await msg.delete(delay=18)
                 return
                 
-        msg = await ctx.send(f"❌ No encontré ninguna tarea que coincida con '{query}'.")
+        msg = await ctx.send(f" No encontré ninguna tarea que coincida con '{query}'.")
         await msg.delete(delay=18)
 
     @agenda.command(name="del")
     async def delete_task(self, ctx, *, query: str = None):
         """Elimina una tarea permanentemente. Uso: ¿agenda del 1 o ¿agenda del comprar pan"""
         if not query:
-            msg = await ctx.send("❌ **Error de sintaxis**\n» Uso: `¿agenda del <id o texto>`\n» Ejemplo: `¿agenda del 1`")
+            msg = await ctx.send(" **Error de sintaxis**\n» Uso: `¿agenda del <id o texto>`\n» Ejemplo: `¿agenda del 1`")
             await msg.delete(delay=18)
             return
             
@@ -250,7 +250,7 @@ class AgendaCog(commands.Cog):
                     # Reindexar IDs después de eliminar
                     self.reindex_tasks(tasks_list)
                     self.save_data()
-                    msg = await ctx.send(f"🗑️ Tarea eliminada: **{removed['text']}**")
+                    msg = await ctx.send(f" Tarea eliminada: **{removed['text']}**")
                     await msg.delete(delay=18)
                     return
         except ValueError:
@@ -272,11 +272,11 @@ class AgendaCog(commands.Cog):
                 # Reindexar IDs después de eliminar
                 self.reindex_tasks(tasks_list)
                 self.save_data()
-                msg = await ctx.send(f"🗑️ Tarea eliminada: **{removed['text']}**")
+                msg = await ctx.send(f" Tarea eliminada: **{removed['text']}**")
                 await msg.delete(delay=18)
                 return
                 
-        msg = await ctx.send(f"❌ No encontré ninguna tarea que coincida con '{query}'.")
+        msg = await ctx.send(f" No encontré ninguna tarea que coincida con '{query}'.")
         await msg.delete(delay=18)
 
     # --- Comandos de Recordatorios (Híbrido: Dateparser + AI) ---
@@ -287,7 +287,7 @@ class AgendaCog(commands.Cog):
         Uso: ¿agenda recordar en 10 minutos sacar la pizza
         """
         if not query:
-            msg = await ctx.send("❌ **Error de sintaxis**\n» Uso: `¿agenda recordar <cuando> <qué>`\n» Ejemplo: `¿agenda recordar en 10 minutos sacar la pizza`")
+            msg = await ctx.send(" **Error de sintaxis**\n» Uso: `¿agenda recordar <cuando> <qué>`\n» Ejemplo: `¿agenda recordar en 10 minutos sacar la pizza`")
             await msg.delete(delay=15)
             return
             
@@ -325,13 +325,13 @@ class AgendaCog(commands.Cog):
                 return
                 
         except ImportError:
-            print("⚠️ dateparser no instalado, usando solo AI.")
+            print(" dateparser no instalado, usando solo AI.")
         except Exception as e:
-            print(f"⚠️ Error dateparser: {e}")
+            print(f" Error dateparser: {e}")
 
         # Fallback a AI si dateparser falla o no encuentra fecha
         if not client:
-            await ctx.send("⚠️ No pude detectar la fecha y la IA no está configurada.")
+            await ctx.send(" No pude detectar la fecha y la IA no está configurada.")
             return
 
         async with ctx.typing():
@@ -354,7 +354,7 @@ class AgendaCog(commands.Cog):
             
             try:
                 response = client.models.generate_content(
-                    model='gemini-2.0-flash-exp',
+                    model='gemini-3.1-flash-lite-preview',
                     contents=prompt,
                     config=types.GenerateContentConfig(
                         response_mime_type='application/json'
@@ -366,7 +366,7 @@ class AgendaCog(commands.Cog):
                 timestamp_str = result.get("timestamp")
                 
                 if not timestamp_str:
-                    await ctx.send("❌ No pude entender cuándo quieres el recordatorio. Intenta ser más específico con la hora.")
+                    await ctx.send(" No pude entender cuándo quieres el recordatorio. Intenta ser más específico con la hora.")
                     return
                 
                 date_obj = datetime.datetime.fromisoformat(timestamp_str)
@@ -374,7 +374,7 @@ class AgendaCog(commands.Cog):
                 
             except Exception as e:
                 print(f"Error en remind AI: {e}")
-                await ctx.send("⚠️ Ocurrió un error al procesar tu recordatorio.")
+                await ctx.send(" Ocurrió un error al procesar tu recordatorio.")
 
     async def save_reminder(self, ctx, reason, date_obj):
         """Helper para guardar el recordatorio y confirmar al usuario."""
@@ -398,7 +398,7 @@ class AgendaCog(commands.Cog):
         
         # Confirmación amigable
         nice_date = date_obj.strftime("%d/%m a las %I:%M %p")
-        await ctx.send(f"⏰ ¡Entendido! Te recordaré: **{reason}** el **{nice_date}**.")
+        await ctx.send(f" ¡Entendido! Te recordaré: **{reason}** el **{nice_date}**.")
 
     @tasks.loop(minutes=1)
     async def check_reminders(self):
@@ -423,7 +423,7 @@ class AgendaCog(commands.Cog):
                         if user:
                             try:
                                 embed = discord.Embed(
-                                    title="⏰ ¡Recordatorio!",
+                                    title=" ¡Recordatorio!",
                                     description=f"**{r['reason']}**",
                                     color=discord.Color.gold()
                                 )
@@ -434,7 +434,7 @@ class AgendaCog(commands.Cog):
                                 channel = self.bot.get_channel(r["channel_id"])
                                 if channel:
                                     embed = discord.Embed(
-                                        title="⏰ ¡Recordatorio!",
+                                        title=" ¡Recordatorio!",
                                         description=f"**{r['reason']}**",
                                         color=discord.Color.gold()
                                     )
@@ -484,4 +484,4 @@ class AgendaCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(AgendaCog(bot))
-    print("✅ Module commands.agenda loaded")
+    print(" Module commands.agenda loaded")

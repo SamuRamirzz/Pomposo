@@ -44,7 +44,7 @@ class GameSelectionView(View):
             label="Cancelar",
             style=discord.ButtonStyle.danger,
             custom_id="cancel",
-            emoji="❌"
+            emoji=""
         )
         cancel_button.callback = self.cancel_callback
         self.add_item(cancel_button)
@@ -82,7 +82,7 @@ class GameSelectionView(View):
         for item in self.children:
             item.disabled = True
         try:
-            await self.message.edit(content="⏱️ Tiempo agotado.", view=self)
+            await self.message.edit(content="⏱ Tiempo agotado.", view=self)
         except:
             pass
 
@@ -95,7 +95,7 @@ class DealCog(commands.Cog):
         """Busca juegos por título en la API."""
         api_key = get_api_key()
         if not api_key:
-            print("⚠️ API Key no encontrada en search_game")
+            print(" API Key no encontrada en search_game")
             return None
 
         url = f"{BASE_URL}/games/search/v1"
@@ -111,10 +111,10 @@ class DealCog(commands.Cog):
                     if resp.status == 200:
                         return await resp.json()
                     else:
-                        print(f"❌ Error API Search ({resp.status}): {await resp.text()}")
+                        print(f" Error API Search ({resp.status}): {await resp.text()}")
                         return None
         except Exception as e:
-            print(f"❌ Excepción en search_game: {e}")
+            print(f" Excepción en search_game: {e}")
             return None
 
     async def get_prices(self, game_id: str, country: str = "US"):
@@ -143,10 +143,10 @@ class DealCog(commands.Cog):
                             deals.sort(key=lambda x: x.get("cut", 0), reverse=True)
                             return deals
                     else:
-                        print(f"❌ Error API Prices ({resp.status}): {await resp.text()}")
+                        print(f" Error API Prices ({resp.status}): {await resp.text()}")
                     return []
         except Exception as e:
-            print(f"❌ Excepción en get_prices: {e}")
+            print(f" Excepción en get_prices: {e}")
             return []
 
     async def create_deal_embed(self, game):
@@ -158,18 +158,18 @@ class DealCog(commands.Cog):
         
         if not deals:
             return discord.Embed(
-                title=f"🎮 {game_title}",
-                description="📭 No encontré ofertas actuales para este juego.",
+                title=f" {game_title}",
+                description=" No encontré ofertas actuales para este juego.",
                 color=discord.Color.light_grey()
             )
 
         embed = discord.Embed(
-            title=f"🎮 Ofertas para: {game_title}",
+            title=f" Ofertas para: {game_title}",
             color=discord.Color.green(),
             description="Mejores precios encontrados:"
         )
         
-        medals = ["🥇", "🥈", "🥉"]
+        medals = ["", "", ""]
         
         for i, deal in enumerate(deals[:5]): # Mostrar top 5
             shop = deal.get("shop", {}).get("name", "Tienda")
@@ -180,7 +180,7 @@ class DealCog(commands.Cog):
             url = deal.get("url", "")
             
             symbol = "$" if currency == "USD" else currency + " "
-            medal = medals[i] if i < len(medals) else "🏷️"
+            medal = medals[i] if i < len(medals) else ""
             
             field_name = f"{medal} {shop}"
             field_value = (
@@ -205,7 +205,7 @@ class DealCog(commands.Cog):
         Uso: ¿deal <nombre del juego>
         """
         if not get_api_key():
-            await ctx.send("⚠️ Error de configuración: API Key no encontrada.")
+            await ctx.send(" Error de configuración: API Key no encontrada.")
             return
 
         async with ctx.typing():
@@ -213,7 +213,7 @@ class DealCog(commands.Cog):
             games = await self.search_game(game_title, limit=3)
             
             if not games:
-                await ctx.send(f"❌ No encontré juegos que coincidan con: **{game_title}**")
+                await ctx.send(f" No encontré juegos que coincidan con: **{game_title}**")
                 return
             
             # Coincidencia exacta o único resultado
@@ -223,7 +223,7 @@ class DealCog(commands.Cog):
             
             # Múltiples resultados -> Selección
             embed = discord.Embed(
-                title="🔍 Selección de Juego",
+                title=" Selección de Juego",
                 description=f"Encontré varios resultados para **{game_title}**. Selecciona uno:",
                 color=discord.Color.blue()
             )
@@ -235,7 +235,7 @@ class DealCog(commands.Cog):
                     inline=False
                 )
             
-            embed.set_footer(text="Usa los botones para seleccionar un juego 👇")
+            embed.set_footer(text="Usa los botones para seleccionar un juego ")
             
             view = GameSelectionView(games, self, ctx)
             view.message = await ctx.send(embed=embed, view=view)
@@ -249,4 +249,4 @@ class DealCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(DealCog(bot))
-    print("✅ Module commands.deal loaded (Rewritten Version)")
+    print(" Module commands.deal loaded (Rewritten Version)")
