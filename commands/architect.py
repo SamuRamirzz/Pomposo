@@ -225,7 +225,7 @@ class ArchitectCog(commands.Cog):
         try:
             prompt = INTENT_PROMPT.format(instruction=instruction)
             response = architect_client.models.generate_content(
-                model='gemini-3.1-flash-lite-preview',
+                model='gemini-2.0-flash-lite',
                 contents=prompt
             )
             
@@ -260,7 +260,7 @@ class ArchitectCog(commands.Cog):
             full_prompt = f"{ARCHITECT_PROMPT}\n{context}\nSOLICITUD: {instruction}\n\nGenera el código:"
             
             response = architect_client.models.generate_content(
-                model='gemini-3.1-flash-lite-preview',
+                model='gemini-2.0-flash-lite',
                 contents=full_prompt
             )
             
@@ -290,7 +290,7 @@ class ArchitectCog(commands.Cog):
             )
             
             response = architect_client.models.generate_content(
-                model='gemini-3.1-flash-lite-preview',
+                model='gemini-2.0-flash-lite',
                 contents=prompt
             )
             
@@ -679,7 +679,7 @@ class ArchitectCog(commands.Cog):
                 """
                 
                 response = architect_client.models.generate_content(
-                    model='gemini-3.1-flash-lite-preview',
+                    model='gemini-2.0-flash-lite',
                     contents=prompt
                 )
                 
