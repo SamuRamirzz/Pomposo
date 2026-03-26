@@ -7,10 +7,6 @@ import asyncio
 import random
 from typing import List, Optional
 
-# Usar GOOGLE_SEARCH_API_KEY primero, con fallback a GEMINI_API_KEY
-GOOGLE_API_KEY = os.getenv('GOOGLE_SEARCH_API_KEY') or os.getenv('GEMINI_API_KEY')
-GOOGLE_CX_ID = os.getenv('GOOGLE_SEARCH_CX_ID')
-
 # Configuración de búsqueda
 MAX_RESULTS = 20          # Resultados totales a obtener
 RESULTS_PER_PAGE = 10     # Máximo por request de la API
@@ -201,149 +197,80 @@ class ImageSearchCog(commands.Cog):
         except:
             return False
 
-    async def search_images(self, query: str, safe_search: str = "active") -> List[ImageResult]:
+    def _sync_ddgs_search(self, query: str, ddg_safe: str) -> List[dict]:
+        """Wrapper síncrono para exécutar DDGS.images en un thread separado."""
+        from duckduckgo_search import DDGS
+        with DDGS() as ddgs:
+            return list(ddgs.images(
+                keywords=query,
+                region='wt-wt',
+                safesearch=ddg_safe,
+                max_results=MAX_RESULTS * 2  # Pedir el doble por si fallan validaciones
+            ))
+
+    async def search_images(self, query: str, safe_search: str = "on") -> List[ImageResult]:
         """
-        Busca imágenes usando Google Custom Search API.
-        
-        Mejoras V2:
-        - Sin restricción de imgSize (imágenes a resolución completa)
-        - Randomización del start index para variedad
-        - Doble request para obtener hasta 20 resultados
-        - SafeSearch dinámico según el canal
+        Busca imágenes usando DuckDuckGo Search de forma gratuita (sin API keys).
+        Corre en un thread separado para no bloquear el bot de Discord.
         """
-        if not GOOGLE_API_KEY or not GOOGLE_CX_ID:
-            raise ValueError(
-                " Faltan credenciales de Google Search API. Configura GOOGLE_SEARCH_API_KEY y GOOGLE_SEARCH_CX_ID")
-
-        session = await self._get_session()
-        all_items = []
-
-        # Randomizar el punto de inicio para obtener resultados variados
-        # Google permite start de 1 a 91 (límite de 100 resultados)
-        random_start = random.randint(1, RANDOM_START_RANGE)
-
-        # Hacer 2 requests para obtener hasta 20 resultados
-        for page in range(2):
-            start_index = random_start + (page * RESULTS_PER_PAGE)
-            if start_index > 91:  # Límite de Google
-                break
-
-            url = "https://www.googleapis.com/customsearch/v1"
-            params = {
-                "key": GOOGLE_API_KEY,
-                "cx": GOOGLE_CX_ID,
-                "q": query,
-                "searchType": "image",
-                "num": RESULTS_PER_PAGE,
-                "start": start_index,
-                "safe": safe_search,
-                "filter": "1",      # Eliminar duplicados
-                # NO imgSize → imágenes a resolución completa
-                # NO imgType → todo tipo de imágenes
-            }
-
-            try:
-                async with session.get(url, params=params) as response:
-                    if response.status == 403:
-                        raise ValueError(" API Key inválida o límite de cuota excedido.")
-                    elif response.status == 400:
-                        # Posible start index fuera de rango, intentar sin offset
-                        if page == 0:
-                            params["start"] = 1
-                            async with session.get(url, params=params) as retry:
-                                if retry.status == 200:
-                                    data = await retry.json()
-                                    all_items.extend(data.get("items", []))
-                        continue
-                    elif response.status != 200:
-                        if page == 0:
-                            raise ValueError(f" Error de API: {response.status}")
-                        continue
-
-                    data = await response.json()
-                    items = data.get("items", [])
-                    all_items.extend(items)
-
-            except ValueError:
-                raise
-            except asyncio.TimeoutError:
-                if page == 0:
-                    raise ValueError(" Google tardó mucho en responder. Intenta de nuevo.")
-                continue
-            except aiohttp.ClientError as e:
-                if page == 0:
-                    raise ValueError(f" Error de conexión: {str(e)}")
-                continue
-
-        # Fallback: si no hubo resultados con start aleatorio, reintentar desde el inicio
-        if not all_items and random_start > 1:
-            try:
-                params_fallback = {
-                    "key": GOOGLE_API_KEY,
-                    "cx": GOOGLE_CX_ID,
-                    "q": query,
-                    "searchType": "image",
-                    "num": RESULTS_PER_PAGE,
-                    "start": 1,
-                    "safe": safe_search,
-                    "filter": "1",
-                }
-                async with session.get("https://www.googleapis.com/customsearch/v1", params=params_fallback) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        all_items.extend(data.get("items", []))
-            except:
-                pass
-
-        if not all_items:
-            return []
-
-        # Procesar resultados
         results = []
-        seen_urls = set()  # Evitar duplicados
-
-        for item in all_items:
-            try:
-                image_url = item.get("link")
+        try:
+            # DuckDuckGo safesearch: 'on', 'moderate', 'off'
+            ddg_safe = "on" if safe_search == "on" else "off"
+            
+            # Ejecutar la búsqueda sincrónica sin bloquear el event loop
+            images = await asyncio.to_thread(self._sync_ddgs_search, query, ddg_safe)
+            
+            if not images:
+                return []
+                
+            seen_urls = set()
+            raw_results = []
+            
+            for item in images:
+                image_url = item.get('image')
                 if not image_url or image_url in seen_urls:
                     continue
-
+                    
                 seen_urls.add(image_url)
-
-                thumbnail = item.get("image", {}).get("thumbnailLink", image_url)
-                title = item.get("title", "Sin título")
-                context = item.get("image", {}).get("contextLink", "")
-                width = item.get("image", {}).get("width", 0)
-                height = item.get("image", {}).get("height", 0)
-
-                # Filtrar URLs obviamente rotas
+                thumbnail = item.get('thumbnail', image_url)
+                title = item.get('title', 'Sin título')
+                context = item.get('url', '')
+                width = item.get('width', 0)
+                height = item.get('height', 0)
+                
+                # Filtrar URLs rotas
                 if any(bad in image_url.lower() for bad in [".svg", "data:image", "placeholder"]):
                     continue
+                    
+                raw_results.append(ImageResult(image_url, thumbnail, title, context, width, height))
+                if len(raw_results) >= MAX_RESULTS:
+                    break
+                    
+        except Exception as e:
+            raise ValueError(f" Error con DuckDuckGo Search: {str(e)}")
 
-                results.append(ImageResult(image_url, thumbnail, title, context, width, height))
-            except:
-                continue
+        if not raw_results:
+            return []
 
-        # Validar las URLs de imagen en paralelo (las primeras 20)
-        if results:
-            validation_tasks = [
-                self.validate_image_url(session, img.url) 
-                for img in results[:MAX_RESULTS]
-            ]
-            validations = await asyncio.gather(*validation_tasks, return_exceptions=True)
+        # Validar las URLs
+        session = await self._get_session()
+        validation_tasks = [
+            self.validate_image_url(session, img.url) 
+            for img in raw_results
+        ]
+        validations = await asyncio.gather(*validation_tasks, return_exceptions=True)
+        
+        validated_results = []
+        for img, is_valid in zip(raw_results, validations):
+            if is_valid is True:
+                validated_results.append(img)
+                
+        # Fallback si valida muy pocas
+        if len(validated_results) < 3 and len(raw_results) > len(validated_results):
+            return raw_results[:MAX_RESULTS]
             
-            validated_results = []
-            for img, is_valid in zip(results[:MAX_RESULTS], validations):
-                if is_valid is True:
-                    validated_results.append(img)
-            
-            # Si la validación filtró demasiadas, usar las no validadas como fallback
-            if len(validated_results) < 3 and len(results) > len(validated_results):
-                return results[:MAX_RESULTS]
-            
-            return validated_results
-
-        return results
+        return validated_results
 
     async def execute_search(self, query: str, context) -> None:
         """Ejecuta la búsqueda y muestra los resultados."""

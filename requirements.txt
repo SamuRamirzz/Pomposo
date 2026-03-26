@@ -14,3 +14,4 @@ google-cloud-texttospeech
 discord.py[voice]
 edge-tts
 pymongo[srv]
+duckduckgo-search
