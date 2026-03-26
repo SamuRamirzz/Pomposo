@@ -261,7 +261,7 @@ class AskCog(commands.Cog):
                     config_kwargs['tools'] = tools
 
                 chat = client.chats.create(
-                    model='gemini-2.0-flash-lite',
+                    model='gemini-2.5-flash',
                     config=types.GenerateContentConfig(**config_kwargs),
                     history=gemini_hist
                 )
