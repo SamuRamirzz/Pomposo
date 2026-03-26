@@ -201,17 +201,39 @@ class AskCog(commands.Cog):
         # --- INTELIGENCIA 24/7 CON SOPORTE DE IMÁGENES ---
         async with ctx.typing():
             try:
-                # 1. Contexto
+                # 1. Contexto básico
                 memoria = leer_memoria_completa()
                 fecha = obtener_tiempo_real()
                 user = ctx.author.name.lower()
+
+                # 2. Contexto del canal (últimos 5 mensajes)
+                canal_context = ""
+                try:
+                    mensajes_recientes = []
+                    async for msg in ctx.channel.history(limit=6):  # 6 para excluir el comando actual
+                        if msg.id == ctx.message.id:
+                            continue
+                        if msg.author.bot:
+                            mensajes_recientes.append(f"[BOT] {msg.author.name}: {msg.content[:150]}")
+                        else:
+                            mensajes_recientes.append(f"{msg.author.name}: {msg.content[:150]}")
+                    if mensajes_recientes:
+                        mensajes_recientes.reverse()  # Orden cronológico
+                        canal_context = "\n".join(mensajes_recientes[:5])
+                except Exception:
+                    canal_context = ""
 
                 sys_prompt = f"""
                 {PERSONALIDAD_BASE}
                 [TIEMPO REAL] {fecha}
                 [USUARIO] {user}
                 [MEMORIA] {memoria}
-                [INSTRUCCIÓN] Usa Google Search para noticias, fechas o datos exactos.
+                [CHAT RECIENTE DEL CANAL]
+                {canal_context if canal_context else "(sin mensajes recientes)"}
+                [INSTRUCCIONES]
+                - Usa Google Search para noticias, fechas o datos exactos.
+                - El chat reciente del canal es solo para que tengas contexto de la conversación. NO lo menciones a menos que sea directamente relevante a lo que te preguntan.
+                - Si alguien habla de otra persona del chat, puedes usar el contexto para entender de quién hablan.
                 """
 
                 # 2. Historial
