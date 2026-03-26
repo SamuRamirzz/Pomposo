@@ -23,8 +23,22 @@ else:
     print("  Advertencia: Falta 'GEMINI_API_KEY' en .env.")
 
 # --- Constantes ---
-MEMORY_FILE = "bot_memory.txt"
 CONFIG_FILE = "bot_config.json"
+
+# --- Memoria (MongoDB con fallback a archivo local) ---
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from mongo_memory import (
+    leer_memoria_completa,
+    leer_memoria_lineas,
+    escribir_en_memoria,
+    reescribir_memoria_lineas,
+    olvidar_por_texto as olvidar_linea_especifica,
+    importar_desde_archivo
+)
+
+# Importar memoria existente a MongoDB al iniciar
+importar_desde_archivo()
 
 # --- Personalidad ---
 def load_personality():
@@ -37,7 +51,7 @@ def load_personality():
 
 PERSONALIDAD_BASE = load_personality()
 
-# --- Funciones de Memoria ---
+# --- Config ---
 def save_config(data):
     with open(CONFIG_FILE, 'w') as f: json.dump(data, f, indent=4)
 
@@ -48,49 +62,6 @@ def load_config():
             return json.load(f)
     except:
         return {"auto_channel_id": None}
-
-
-def leer_memoria_completa():
-    try:
-        with open(MEMORY_FILE, 'r', encoding='utf-8') as f:
-            return f.read()
-    except:
-        return ""
-
-
-def leer_memoria_lineas():
-    try:
-        with open(MEMORY_FILE, 'r', encoding='utf-8') as f:
-            return [l.strip() for l in f.readlines() if l.strip()]
-    except:
-        return []
-
-
-def reescribir_memoria_lineas(lineas):
-    with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
-        for linea in lineas: f.write(f"{linea}\n")
-
-
-def escribir_en_memoria(texto):
-    with open(MEMORY_FILE, 'a', encoding='utf-8') as f: f.write(f"{texto}\n")
-
-
-def olvidar_linea_especifica(texto_a_olvidar):
-    lineas = leer_memoria_lineas()
-    if not lineas: return None
-    mejor_coincidencia = None
-    mejor_puntuacion = 0
-    texto_lower = texto_a_olvidar.lower()
-    for linea in lineas:
-        puntuacion = fuzz.partial_ratio(texto_lower, linea.lower())
-        if puntuacion > mejor_puntuacion:
-            mejor_puntuacion = puntuacion
-            mejor_coincidencia = linea
-    if mejor_puntuacion > 75 and mejor_coincidencia:
-        lineas.remove(mejor_coincidencia)
-        reescribir_memoria_lineas(lineas)
-        return mejor_coincidencia
-    return None
 
 
 def obtener_tiempo_real():
