@@ -22,7 +22,7 @@ class PomposoBrain:
         if self.api_key:
              self.client = genai.Client(api_key=self.api_key)
              # GEMINI 3.1 FLASH LITE
-             self.model_name = 'gemini-2.5-flash'
+             self.model_name = 'gemini-3.1-flash-lite-preview'
         else:
             print(" ADVERTENCIA: No se encontró GOOGLE_API_KEY. La IA no funcionará correctamente.")
             self.client = None
