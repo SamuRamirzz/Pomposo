@@ -225,7 +225,7 @@ class ArchitectCog(commands.Cog):
         try:
             prompt = INTENT_PROMPT.format(instruction=instruction)
             response = architect_client.models.generate_content(
-                model='gemini-2.5-flash-lite',  # Rápido para clasificación de intenciones
+                model='gemini-2.5-flash',  # Rápido para clasificación de intenciones
                 contents=prompt
             )
             
