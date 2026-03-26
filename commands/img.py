@@ -7,7 +7,7 @@ import asyncio
 import random
 from typing import List, Optional
 
-# Usar GEMINI_API_KEY como fallback si no hay GOOGLE_SEARCH_API_KEY
+# Usar GOOGLE_SEARCH_API_KEY primero, con fallback a GEMINI_API_KEY
 GOOGLE_API_KEY = os.getenv('GOOGLE_SEARCH_API_KEY') or os.getenv('GEMINI_API_KEY')
 GOOGLE_CX_ID = os.getenv('GOOGLE_SEARCH_CX_ID')
 
