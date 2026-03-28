@@ -2,25 +2,17 @@ import os
 import json
 import discord
 from discord import app_commands
-from google import genai
-from google.genai import types
 from discord.ext import commands
 from fuzzywuzzy import fuzz
 from datetime import datetime
 import pytz
 import aiohttp
+import asyncio
+import base64
+from openrouter import chat_completion
 
-# --- Configuración de Gemini (API Gratuita + Google Search) ---
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-client = None
-if GEMINI_API_KEY:
-    try:
-        client = genai.Client(api_key=GEMINI_API_KEY)
-        print(" Conectado a Gemini (con Google Search y Conciencia Temporal).")
-    except Exception as e:
-        print(f" Error al inicializar Gemini: {e}")
-else:
-    print("  Advertencia: Falta 'GEMINI_API_KEY' en .env.")
+# Eliminar la dependencia de google.genai
+print(" Configuración inicializada (Usando OpenRouter API ilimitada)")
 
 # --- Constantes ---
 CONFIG_FILE = "bot_config.json"
@@ -104,9 +96,7 @@ class AskCog(commands.Cog):
 
     @commands.command(name="ask", description="Habla con la IA.")
     async def ask(self, ctx: commands.Context, *, pregunta: str = ""):
-        if not client:
-            await ctx.send(" Error: API de Gemini no configurada.", ephemeral=True)
-            return
+        # Se eliminó la dependencia de GEMINI_API_KEY local en ask.py
         
         pregunta_original = pregunta.strip()
         pregunta_lower = pregunta_original.lower()
@@ -181,7 +171,7 @@ class AskCog(commands.Cog):
                 canal_context = ""
                 try:
                     mensajes_recientes = []
-                    async for msg in ctx.channel.history(limit=6):  # 6 para excluir el comando actual
+                    async for msg in ctx.channel.history(limit=6):
                         if msg.id == ctx.message.id:
                             continue
                         if msg.author.bot:
@@ -189,49 +179,12 @@ class AskCog(commands.Cog):
                         else:
                             mensajes_recientes.append(f"{msg.author.name}: {msg.content[:150]}")
                     if mensajes_recientes:
-                        mensajes_recientes.reverse()  # Orden cronológico
+                        mensajes_recientes.reverse()
                         canal_context = "\n".join(mensajes_recientes[:5])
                 except Exception:
                     canal_context = ""
 
-                sys_prompt = f"""
-                {PERSONALIDAD_BASE}
-                [TIEMPO REAL] {fecha}
-                [USUARIO] {user}
-                [MEMORIA] {memoria}
-                [CHAT RECIENTE DEL CANAL]
-                {canal_context if canal_context else "(sin mensajes recientes)"}
-                [INSTRUCCIONES]
-                - Usa Google Search para noticias, fechas o datos exactos.
-                - El chat reciente del canal es solo para que tengas contexto de la conversación. NO lo menciones a menos que sea directamente relevante a lo que te preguntan.
-                - Si alguien habla de otra persona del chat, puedes usar el contexto para entender de quién hablan.
-                """
-
-                # 2. Historial
-                cid = ctx.channel.id
-                hist_raw = self.conversation_cache.get(cid, [])
-
-                gemini_hist = []
-                for h in hist_raw:
-                    gemini_hist.append(types.Content(role=h.role, parts=h.parts))
-
-                # 3. Mensaje Usuario + Imágenes
-                parts = []
-                user_text = f"{user}: {pregunta_original}"
-                parts.append(types.Part(text=user_text))
-
-                # Procesar imágenes adjuntas
-                image_count = 0
-                if ctx.message.attachments:
-                    for attachment in ctx.message.attachments:
-                        if attachment.content_type and attachment.content_type.startswith('image/'):
-                            img_bytes, mime_type = await download_image(attachment.url)
-                            if img_bytes:
-                                parts.append(types.Part.from_bytes(data=img_bytes, mime_type=mime_type))
-                                image_count += 1
-                                print(f" Imagen adjuntada: {attachment.filename} ({mime_type})")
-
-                # 4. Herramientas (Google Search solo cuando se necesita)
+                # 3. Determinar si necesitamos buscar en DuckDuckGo (RAG Text Search)
                 SEARCH_KEYWORDS = [
                     'quien', 'quién', 'cuando', 'cuándo', 'donde', 'dónde',
                     'noticias', 'precio', 'clima', 'temperatura', 'ganó',
@@ -243,46 +196,90 @@ class AskCog(commands.Cog):
                 pregunta_lower_check = pregunta_original.lower()
                 needs_search = any(kw in pregunta_lower_check for kw in SEARCH_KEYWORDS)
                 
-                tools = [types.Tool(google_search=types.GoogleSearch())] if needs_search else []
+                search_context = ""
+                if needs_search:
+                    def _sync_ddg_text_search(q):
+                        from duckduckgo_search import DDGS
+                        with DDGS() as ddgs:
+                            return list(ddgs.text(q, region='wt-wt', safesearch='moderate', max_results=3))
+                    
+                    try:
+                        search_results = await asyncio.to_thread(_sync_ddg_text_search, pregunta_original)
+                        if search_results:
+                            search_context = "[RESULTADOS WEB EN TIEMPO REAL PARA EL CONTEXTO]\n"
+                            for res in search_results:
+                                search_context += f"- {res.get('title')}: {res.get('body')}\n"
+                    except Exception as e:
+                        print(f"Error DuckDuckGo text search: {e}")
 
-                # 5. Ejecutar IA
-                config_kwargs = {
-                    'system_instruction': sys_prompt,
-                    'temperature': 0.8,
-                }
-                if tools:
-                    config_kwargs['tools'] = tools
+                sys_prompt = f"""
+                {PERSONALIDAD_BASE}
+                [TIEMPO REAL] {fecha}
+                [USUARIO] {user}
+                [MEMORIA] {memoria}
+                [CHAT RECIENTE DEL CANAL]
+                {canal_context if canal_context else "(sin mensajes recientes)"}
+                {search_context}
+                [INSTRUCCIONES]
+                - Los RESULTADOS WEB (si los hay) son para que te informes de la actualidad mundial antes de responder.
+                - El chat reciente del canal es solo para que tengas contexto de la conversación. NO lo menciones a menos que sea directamente relevante a lo que te preguntan.
+                - Si alguien habla de otra persona del chat, puedes usar el contexto para entender de quién hablan.
+                """
 
-                chat = client.chats.create(
-                    model='gemini-2.5-flash',
-                    config=types.GenerateContentConfig(**config_kwargs),
-                    history=gemini_hist
+                # 4. Historial Formato OpenRouter
+                cid = ctx.channel.id
+                hist_raw = self.conversation_cache.get(cid, [])
+
+                # 5. Mensaje Usuario + Imágenes Base64
+                user_text = f"{user}: {pregunta_original}"
+                content_payload = []
+                image_count = 0
+                
+                if ctx.message.attachments:
+                    content_payload.append({"type": "text", "text": user_text})
+                    for attachment in ctx.message.attachments:
+                        if attachment.content_type and attachment.content_type.startswith('image/'):
+                            img_bytes, mime_type = await download_image(attachment.url)
+                            if img_bytes:
+                                b64 = base64.b64encode(img_bytes).decode('utf-8')
+                                content_payload.append({
+                                    "type": "image_url", 
+                                    "image_url": {"url": f"data:{mime_type};base64,{b64}"}
+                                })
+                                image_count += 1
+                                print(f" Imagen adjuntada parseada a Base64 ({mime_type})")
+                
+                if image_count == 0:
+                    content_payload = user_text  # Si no hay imágenes, enviar string normal
+
+                # 6. Ejecutar IA
+                messages_to_send = hist_raw + [{"role": "user", "content": content_payload}]
+                
+                resp_text = await chat_completion(
+                    system_prompt=sys_prompt,
+                    messages=messages_to_send,
+                    # Se usa modelo Lite Free que soporta Vision y es muy rápido
+                    model="google/gemini-2.0-flash-lite-preview-02-05:free"
                 )
 
-                # Enviar mensaje con todas las partes (texto + imágenes)
-                resp = chat.send_message(parts)
-
-                # 6. Guardar Historial (solo texto, no imágenes para ahorrar memoria)
+                # 7. Guardar Historial
                 if cid not in self.conversation_cache: 
                     self.conversation_cache[cid] = []
 
-                # Guardar solo la parte de texto en el historial
-                text_part = types.Part(text=user_text)
-                self.conversation_cache[cid].append(types.Content(role='user', parts=[text_part]))
-
-                if resp.text and resp.text.strip():
-                    model_part = types.Part(text=resp.text)
-                    self.conversation_cache[cid].append(types.Content(role='model', parts=[model_part]))
+                # Guardar solo la parte de texto puro en el historial (no las imágenes en base64 para ahorrar cache)
+                self.conversation_cache[cid].append({"role": "user", "content": user_text})
+                
+                if resp_text and resp_text.strip():
+                    self.conversation_cache[cid].append({"role": "assistant", "content": resp_text})
 
                     if len(self.conversation_cache[cid]) > 20:
                         self.conversation_cache[cid] = self.conversation_cache[cid][-20:]
 
-                    if len(resp.text) > 2000:
-                        await ctx.reply(resp.text[:2000])
+                    if len(resp_text) > 2000:
+                        await ctx.reply(resp_text[:2000])
                     else:
-                        await ctx.reply(resp.text)
+                        await ctx.reply(resp_text)
                 else:
-                    # No enviar mensaje vacío, enviar un mensaje de error
                     await ctx.reply("La IA no pudo generar una respuesta. Intenta de nuevo.")
 
             except Exception as e:

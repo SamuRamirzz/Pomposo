@@ -35,26 +35,15 @@ import inspect
 from datetime import datetime
 from discord.ext import commands
 from discord import app_commands
-from google import genai
 from pathlib import Path
+from openrouter import chat_completion
 
 # Importar el SafeEditor V2
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from safe_editor import safe_editor, ErrorClassifier, ErrorSeverity, COMMANDS_DIR, STAGING_DIR
 
-# 
-#  CONFIGURACIÓN
-# 
-
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-architect_client = None
-if GEMINI_API_KEY:
-    try:
-        architect_client = genai.Client(api_key=GEMINI_API_KEY)
-        print(" Arquitecto V3 conectado a Gemini.")
-    except Exception as e:
-        print(f" Error al inicializar Arquitecto: {e}")
+print(" Arquitecto V3 inicializado (Cerebro OpenRouter).")
 
 # Cargar Personalidad
 PERSONALITY_FILE = Path(__file__).parent.parent / "ask_personalidad.txt"
@@ -219,18 +208,17 @@ class ArchitectCog(commands.Cog):
 
     async def analyze_intent(self, instruction: str) -> dict:
         """Analiza la intención del usuario con IA."""
-        if not architect_client:
-            return {"action": "create", "target_file": None, "command_name": "nuevo_comando", "description": instruction}
-        
         try:
             prompt = INTENT_PROMPT.format(instruction=instruction)
-            response = architect_client.models.generate_content(
-                model='gemini-2.5-flash',  # Rápido para clasificación de intenciones
-                contents=prompt
+            response_text = await chat_completion(
+                system_prompt="Eres un clasificador JSON estricto.",
+                messages=[{"role": "user", "content": prompt}],
+                model="google/gemini-2.0-flash-lite-preview-02-05:free",
+                response_format={"type": "json_object"}
             )
             
-            if response.text:
-                clean = response.text.strip()
+            if response_text:
+                clean = response_text.strip()
                 # Limpiar posible markdown
                 if clean.startswith("```"):
                     clean = clean.split("```")[1]
@@ -245,9 +233,6 @@ class ArchitectCog(commands.Cog):
 
     async def generate_code(self, instruction: str, existing_code: str = None) -> tuple:
         """Genera o modifica código con la IA."""
-        if not architect_client:
-            return None, " El Arquitecto está dormido (falta API key)"
-        
         try:
             context = ""
             if existing_code:
@@ -257,17 +242,19 @@ class ArchitectCog(commands.Cog):
             if extra_context:
                 context += f"\nCONTEXTO ADICIONAL:\n{extra_context}\n"
             
-            full_prompt = f"{ARCHITECT_PROMPT}\n{context}\nSOLICITUD: {instruction}\n\nGenera el código:"
+            user_prompt = f"{context}\nSOLICITUD: {instruction}\n\nGenera el código:"
             
-            response = architect_client.models.generate_content(
-                model='gemini-2.5-flash',  # Modelo potente para generación de código
-                contents=full_prompt
+            response_text = await chat_completion(
+                system_prompt=ARCHITECT_PROMPT,
+                messages=[{"role": "user", "content": user_prompt}],
+                model="google/gemini-2.0-flash-lite-preview-02-05:free",
+                max_tokens=4000
             )
             
-            if response.text:
-                code = safe_editor.extract_code_from_markdown(response.text)
-                return code, response.text
-            return None, "Gemini no generó respuesta"
+            if response_text:
+                code = safe_editor.extract_code_from_markdown(response_text)
+                return code, response_text
+            return None, "OpenRouter no generó respuesta"
         except Exception as e:
             return None, f"Error generando código: {e}"
 
@@ -275,9 +262,6 @@ class ArchitectCog(commands.Cog):
                                   command_name: str, severity: ErrorSeverity,
                                   file_name: str = "desconocido") -> tuple:
         """Genera diagnóstico y parche para un error."""
-        if not architect_client:
-            return None, "El Arquitecto está dormido"
-        
         try:
             prompt = DIAGNOSIS_PROMPT.format(
                 architect_prompt=ARCHITECT_PROMPT,
@@ -289,14 +273,16 @@ class ArchitectCog(commands.Cog):
                 file_name=file_name
             )
             
-            response = architect_client.models.generate_content(
-                model='gemini-2.5-flash',  # Modelo potente para diagnóstico de errores
-                contents=prompt
+            response_text = await chat_completion(
+                system_prompt="Eres el Arquitecto. Diagnostica y repara el error devolviendo el código corregido.",
+                messages=[{"role": "user", "content": prompt}],
+                model="google/gemini-2.0-flash-lite-preview-02-05:free",
+                max_tokens=4000
             )
             
-            if response.text:
-                code = safe_editor.extract_code_from_markdown(response.text)
-                return code, response.text
+            if response_text:
+                code = safe_editor.extract_code_from_markdown(response_text)
+                return code, response_text
             return None, "No se pudo generar diagnóstico"
         except Exception as e:
             return None, f"Error en diagnóstico: {e}"

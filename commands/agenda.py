@@ -4,11 +4,10 @@ from discord import app_commands
 import json
 import os
 import datetime
-from google import genai
-from google.genai import types
 from dotenv import load_dotenv
 import pytz
 from fuzzywuzzy import fuzz
+from openrouter import chat_completion
 
 # Cargar entorno
 load_dotenv()
@@ -16,16 +15,7 @@ load_dotenv()
 # Configuración de Archivo
 AGENDA_FILE = 'agenda_data.json'
 
-# Configuración de Gemini
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-client = None
-if GEMINI_API_KEY:
-    try:
-        client = genai.Client(api_key=GEMINI_API_KEY)
-    except Exception as e:
-        print(f" Error al inicializar Gemini en agenda: {e}")
-else:
-    print(" GEMINI_API_KEY no encontrada en agenda.py")
+print(" Agenda (AI) inicializada (Cerebro OpenRouter)")
 
 class AgendaCog(commands.Cog):
     def __init__(self, bot):
@@ -330,10 +320,6 @@ class AgendaCog(commands.Cog):
             print(f" Error dateparser: {e}")
 
         # Fallback a AI si dateparser falla o no encuentra fecha
-        if not client:
-            await ctx.send(" No pude detectar la fecha y la IA no está configurada.")
-            return
-
         async with ctx.typing():
             now = self.get_current_time()
             now_str = now.strftime("%Y-%m-%d %H:%M:%S %Z")
@@ -353,15 +339,20 @@ class AgendaCog(commands.Cog):
             """
             
             try:
-                response = client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        response_mime_type='application/json'
-                    )
+                response_text = await chat_completion(
+                    system_prompt="Eres un asistente de agenda. Responde SOLO con un JSON estricto.",
+                    messages=[{"role": "user", "content": prompt}],
+                    model="google/gemini-2.0-flash-lite-preview-02-05:free",
+                    response_format={"type": "json_object"}
                 )
                 
-                result = json.loads(response.text)
+                clean = response_text.strip()
+                if clean.startswith("```"):
+                    clean = clean.split("```")[1]
+                    if clean.startswith("json"):
+                        clean = clean[4:]
+                clean = clean.strip()
+                result = json.loads(clean)
                 reason = result.get("reason")
                 timestamp_str = result.get("timestamp")
                 

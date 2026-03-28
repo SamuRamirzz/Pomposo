@@ -1,31 +1,12 @@
 import os
 import json
 import logging
-from dotenv import load_dotenv
-from google import genai
-from google.genai import types
-from googleapiclient.discovery import build
-
-load_dotenv()
+import asyncio
+from openrouter import chat_completion
 
 class PomposoBrain:
     def __init__(self, memory_file='bot_memory.txt'):
         self.memory_file = memory_file
-        self.api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-        self.cse_id = os.getenv("GOOGLE_CSE_ID") or os.getenv("GOOGLE_SEARCH_CX_ID")
-        self.search_api_key = os.getenv("GOOGLE_SEARCH_API_KEY") # Sometimes separate from GenAI key
-        
-        # Fallback if only one key is provided
-        if not self.search_api_key and self.api_key:
-            self.search_api_key = self.api_key
-
-        if self.api_key:
-             self.client = genai.Client(api_key=self.api_key)
-             # GEMINI 3.1 FLASH LITE
-             self.model_name = 'gemini-2.5-flash'
-        else:
-            print(" ADVERTENCIA: No se encontró GOOGLE_API_KEY. La IA no funcionará correctamente.")
-            self.client = None
 
     def _load_memory(self):
         """Lee el archivo de memoria para dar contexto."""
@@ -60,117 +41,96 @@ class PomposoBrain:
         
         SI NO SABES ALGO:
         - Di 'no lo sé jeje' (y su versión corregida en 'voice').
+        
+        IMPORTANTE: TU ÚNICA SALIDA DEBE SER EL JSON CRUDO. NO USES BLOQUES DE CÓDIGO NI MARKDOWN. SOLO { ... }.
         """
 
-    def _google_search(self, query):
-        """Realiza una búsqueda en Google usando Custom Search JSON API."""
-        if not self.search_api_key or not self.cse_id:
-            return None
-        
+    def _sync_ddg_search(self, query):
+        """Realiza una búsqueda en DuckDuckGo (síncrona)."""
+        from duckduckgo_search import DDGS
         try:
-            service = build("customsearch", "v1", developerKey=self.search_api_key)
-            res = service.cse().list(q=query, cx=self.cse_id, num=3).execute()
-            
-            if 'items' not in res:
-                return None
+            with DDGS() as ddgs:
+                results = list(ddgs.text(query, region='wt-wt', safesearch='moderate', max_results=3))
+                if not results:
+                    return None
                 
-            results = []
-            for item in res['items']:
-                title = item.get('title')
-                snippet = item.get('snippet')
-                results.append(f"- {title}: {snippet}")
-            
-            return "\n".join(results)
+                formatted = []
+                for item in results:
+                    formatted.append(f"- {item.get('title')}: {item.get('body')}")
+                return "\n".join(formatted)
         except Exception as e:
-            print(f"Error en Google Search: {e}")
+            print(f"Error DuckDuckGo: {e}")
             return None
 
     async def generate_response(self, user_text, image_url=None):
         """
-        Procesa el texto del usuario y genera una respuesta.
-        1. Detecta keywords y reacciones rápidas.
-        2. Busca en Google si es necesario.
-        3. Genera respuesta con LLM.
+        Procesa el texto del usuario y genera una respuesta 24/7 en formato JSON para dictado Voice TTS.
         """
         user_text_lower = user_text.lower()
 
         # --- Reacciones Rápidas (Bromas) ---
         if "te partiremos la torta" in user_text_lower or "te celebraremos" in user_text_lower:
-            return "oye nooo alejate emfermo >:("
+            return {"chat": "oye nooo alejate emfermo >:(", "voice": "Oye no, aléjate enfermo."}
         
         # --- Lógica de IA ---
-        if not self.client:
-            return "no tengo cerebro ahorita (falta api key) jeje"
-
         memory_context = self._load_memory()
         system_prompt = self._get_system_prompt()
         
-        # Prompt inicial para decidir si buscar
-        # Nota: En una implementación más avanzada, usaríamos function calling.
-        # Aquí usaremos un heurístico simple o instrucción directa al modelo si el usuario pregunta algo fáctico.
-        
         search_context = ""
-        # Heurístico simple para búsqueda: preguntas de 'quién', 'cuándo', 'qué pasó', 'noticias'
+        # Heurístico simple para búsqueda en tiempo real
         if any(w in user_text_lower for w in ['quien', 'quién', 'cuando', 'cuándo', 'noticias', 'precio', 'clima', 'ganó']):
-             print(f" Detectado intento de búsqueda para: {user_text}")
-             search_results = self._google_search(user_text)
+             print(f" Detectado intento de búsqueda para voz: {user_text}")
+             search_results = await asyncio.to_thread(self._sync_ddg_search, user_text)
+             
              if search_results:
-                 search_context = f"\nINFORMACIÓN DE BÚSQUEDA RECIENTE (Google):\n{search_results}\nUsa esto para responder si es relevante."
+                 search_context = f"\nINFORMACIÓN DE BÚSQUEDA RECIENTE (WEB):\n{search_results}\nUsa esto para responder si es relevante."
              else:
-                 search_context = "\n(No se encontraron resultados en Google, si no sabes la respuesta dilo)."
+                 search_context = "\n(No se encontraron resultados en búsqueda, si no sabes la respuesta dilo)."
 
         full_prompt = f"""
-        {system_prompt}
-        
-        CONTEXTO DE MEMORIA (Conversaciones pasadas):
+        CONTEXTO DE MEMORIA:
         {memory_context}
         
         {search_context}
         
-        USUARIO: {user_text}
-        POMPOSO:
+        Si el usuario mandó una imagen, usa esta URL (o indícalo): {image_url if image_url else 'Ninguna'}
         """
 
         try:
-            # Soporte para imágenes (Visión)
-            # Nota: El nuevo SDK maneja imágenes distinto, aquí asumimos texto por ahora para simplificar la migración
-            # Si llega image_url, la añadimos al texto (idealmente descargaríamos y pasaríamos bytes)
-            if image_url:
-                 full_prompt += f"\n(El usuario también envió esta imagen: {image_url})"
-
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=full_prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json"
-                )
+            import json
+            # OpenRouter ya sabe qué hacer si enviamos un json string de request
+            response_text = await chat_completion(
+                system_prompt=system_prompt + full_prompt,
+                messages=[{"role": "user", "content": user_text}],
+                model="google/gemini-2.0-flash-lite-preview-02-05:free",
+                response_format={"type": "json_object"}
             )
             
-            # Intentar parsear JSON
+            # Limpiar posible markdown en la respuesta
+            clean_text = response_text.strip()
+            if clean_text.startswith("```json"):
+                clean_text = clean_text[7:-3]
+            elif clean_text.startswith("```"):
+                clean_text = clean_text[3:-3]
+                
             try:
-                data = json.loads(response.text)
+                data = json.loads(clean_text)
                 return data # Retorna dict {'chat': ..., 'voice': ...}
             except json.JSONDecodeError:
-                # Fallback si el modelo falla el JSON
-                text = response.text
-                return {"chat": text, "voice": text}
-
-        except Exception as inner_e:
-            print(f"Error generando contenido: {inner_e}")
-            return {"chat": "me mori (error interno) jeje", "voice": "Tuve un error interno."}
+                return {"chat": clean_text, "voice": clean_text}
 
         except Exception as e:
-            print(f"Error generando respuesta LLM: {e}")
+            print(f"Error generando respuesta OpenRouter Voice: {e}")
             return {"chat": "me mori (error) jeje", "voice": "Tuve un error interno."}
 
 # Bloque de prueba
 if __name__ == "__main__":
-    import asyncio
     brain = PomposoBrain()
     
-    # Simular interacción
     print("--- Test: Saludo ---")
-    print(asyncio.run(brain.generate_response("Hola pomposo como estas")))
+    res1 = asyncio.run(brain.generate_response("Hola pomposo como estas"))
+    print(res1)
     
     print("\n--- Test: Broma ---")
-    print(asyncio.run(brain.generate_response("te partiremos la torta")))
+    res2 = asyncio.run(brain.generate_response("te partiremos la torta"))
+    print(res2)
