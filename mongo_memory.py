@@ -112,14 +112,16 @@ def olvidar_por_texto(texto_a_buscar: str) -> str:
         texto_lower = texto_a_buscar.lower()
         
         for doc in entries:
-            score = fuzz.partial_ratio(texto_lower, doc['texto'].lower())
+            # token_set_ratio es mucho mejor para coincidencias parciales y desordenadas
+            score = fuzz.token_set_ratio(texto_lower, doc.get('texto', '').lower())
             if score > mejor_score:
                 mejor_score = score
                 mejor = doc
         
-        if mejor and mejor_score >= 60:
+        # Bajar el umbral a 50 para que sea más permisivo
+        if mejor and mejor_score >= 50:
             col.delete_one({'_id': mejor['_id']})
-            return mejor['texto']
+            return mejor.get('texto')
         return None
     except Exception as e:
         print(f"Error olvidando en MongoDB: {e}")

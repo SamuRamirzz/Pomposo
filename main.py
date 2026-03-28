@@ -275,12 +275,15 @@ async def on_command_error(ctx, error):
     tb.print_exception(type(original), original, original.__traceback__)
     
     # Notificar al usuario con embed
+    # Notificar al usuario con embed
     embed = discord.Embed(
-        title=" Error",
-        description=f"```\n{str(original)[:300]}\n```",
+        title=" ¡Ups! Algo salió mal",
+        description="Ha ocurrido un error interno al ejecutar este comando.",
         color=discord.Color.red()
     )
-    embed.set_footer(text="El sistema de auto-reparación ha sido notificado.")
+    # Ya no enviamos el "str(original)" por privacidad, 
+    # el Arquitecto igualmente lo leerá y registrará en la carpeta staging/.
+    embed.set_footer(text="El Arquitecto de Pomposo ha sido notificado con los detalles y está reparándolo.")
     await ctx.send(embed=embed)
 
 
