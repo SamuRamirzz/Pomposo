@@ -25,12 +25,8 @@ from mongo_memory import (
     leer_memoria_lineas,
     escribir_en_memoria,
     reescribir_memoria_lineas,
-    olvidar_por_texto as olvidar_linea_especifica,
-    importar_desde_archivo
+    olvidar_por_texto as olvidar_linea_especifica
 )
-
-# Importar memoria existente a MongoDB al iniciar
-importar_desde_archivo()
 
 # --- Personalidad ---
 def load_personality():

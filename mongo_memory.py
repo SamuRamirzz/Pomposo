@@ -1,12 +1,6 @@
-"""
-Módulo de memoria persistente usando MongoDB Atlas.
-Reemplaza el archivo bot_memory.txt con una base de datos en la nube.
-Mantiene compatibilidad total con las funciones existentes.
-"""
 import os
 from pymongo import MongoClient
-
-MONGO_URI = os.getenv('MONGODB_URI')
+from fuzzywuzzy import fuzz
 
 # --- Conexión ---
 _client = None
@@ -21,15 +15,20 @@ def _get_collection():
     
     uri = os.getenv('MONGODB_URI')
     if not uri:
+        print("⚠️ MONGODB_URI no existe en las variables de entorno.")
         return None
     
     try:
-        _client = MongoClient(uri, serverSelectionTimeoutMS=5000)
-        _db = _client['pomposo_bot']
-        _collection = _db['memory']
+        # Se aumentó el timeout a 10s para Railway
+        _client = MongoClient(uri, serverSelectionTimeoutMS=10000)
+        
+        # Nombres ÚNICOS para no mezclar con bases de datos de clientes/totoriales en la nube
+        _db = _client['pomposo_core_db']
+        _collection = _db['pomposo_memories']
+        
         # Test conexión
         _client.admin.command('ping')
-        print("✅ Conectado a MongoDB Atlas")
+        print("✅ Conectado a MongoDB Atlas (Colección 100% aislada)")
         return _collection
     except Exception as e:
         print(f"⚠️ Error conectando a MongoDB: {e}")
@@ -37,13 +36,13 @@ def _get_collection():
         return None
 
 
-# --- Funciones de Memoria (compatibles con las originales) ---
+# --- Funciones de Memoria ESTRICTA de Base de Datos ---
 
 def leer_memoria_completa() -> str:
-    """Lee toda la memoria como texto (equivale a leer bot_memory.txt)."""
+    """Lee toda la memoria directamente de la base de datos."""
     col = _get_collection()
     if col is None:
-        return _leer_archivo_fallback()
+        return "(Sin conexión a la base de datos)"
     
     try:
         entries = col.find({}, {'texto': 1}).sort('_id', 1)
@@ -51,42 +50,41 @@ def leer_memoria_completa() -> str:
         return '\n'.join(lineas)
     except Exception as e:
         print(f"Error leyendo MongoDB: {e}")
-        return _leer_archivo_fallback()
+        return "(Error leyendo base de datos)"
 
 
 def leer_memoria_lineas() -> list:
     """Lee la memoria como lista de líneas."""
     col = _get_collection()
     if col is None:
-        return _leer_archivo_lineas_fallback()
+        return []
     
     try:
         entries = col.find({}, {'texto': 1}).sort('_id', 1)
         return [doc['texto'] for doc in entries if 'texto' in doc]
     except Exception as e:
         print(f"Error leyendo MongoDB: {e}")
-        return _leer_archivo_lineas_fallback()
+        return []
 
 
 def escribir_en_memoria(texto: str):
-    """Agrega una línea a la memoria."""
+    """Agrega una línea DIRECTAMENTE a MongoDB (Sin TXT local)."""
     col = _get_collection()
     if col is None:
-        _escribir_archivo_fallback(texto)
+        print("❌ Eror: No se guardó (sin base de datos)")
         return
     
     try:
         col.insert_one({'texto': texto.strip()})
+        print(f"💾 Guardado en MongoDB: {texto}")
     except Exception as e:
         print(f"Error escribiendo en MongoDB: {e}")
-        _escribir_archivo_fallback(texto)
 
 
 def reescribir_memoria_lineas(lineas: list):
-    """Reescribe toda la memoria con las líneas dadas."""
+    """Reescribe toda la base de datos con las líneas dadas."""
     col = _get_collection()
     if col is None:
-        _reescribir_archivo_fallback(lineas)
         return
     
     try:
@@ -95,17 +93,15 @@ def reescribir_memoria_lineas(lineas: list):
             col.insert_many([{'texto': l.strip()} for l in lineas if l.strip()])
     except Exception as e:
         print(f"Error reescribiendo MongoDB: {e}")
-        _reescribir_archivo_fallback(lineas)
 
 
 def olvidar_por_texto(texto_a_buscar: str) -> str:
-    """Busca y elimina la línea más parecida al texto dado. Retorna la línea eliminada o None."""
+    """Busca y elimina el texto exacto o parecido directamente en MongoDB."""
     col = _get_collection()
     if col is None:
         return None
     
     try:
-        from fuzzywuzzy import fuzz
         entries = list(col.find({}, {'texto': 1}))
         mejor = None
         mejor_score = 0
@@ -118,7 +114,7 @@ def olvidar_por_texto(texto_a_buscar: str) -> str:
                 mejor_score = score
                 mejor = doc
         
-        # Bajar el umbral a 50 para que sea más permisivo
+        # Umbral muy permisivo para olvidar ideas
         if mejor and mejor_score >= 50:
             col.delete_one({'_id': mejor['_id']})
             return mejor.get('texto')
@@ -126,63 +122,3 @@ def olvidar_por_texto(texto_a_buscar: str) -> str:
     except Exception as e:
         print(f"Error olvidando en MongoDB: {e}")
         return None
-
-
-def importar_desde_archivo(filepath: str = 'bot_memory.txt'):
-    """Importa el contenido de bot_memory.txt a MongoDB (migración inicial)."""
-    col = _get_collection()
-    if col is None:
-        print("⚠️ No se puede importar: sin conexión a MongoDB")
-        return False
-    
-    try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            lineas = [l.strip() for l in f.readlines() if l.strip()]
-        
-        if not lineas:
-            print("Archivo vacío, nada que importar.")
-            return True
-        
-        # Verificar si ya hay datos
-        count = col.count_documents({})
-        if count > 0:
-            print(f"MongoDB ya tiene {count} entradas. Saltando importación.")
-            return True
-        
-        col.insert_many([{'texto': l} for l in lineas])
-        print(f"✅ Importadas {len(lineas)} líneas de memoria a MongoDB")
-        return True
-    except FileNotFoundError:
-        print("No se encontró bot_memory.txt para importar")
-        return False
-    except Exception as e:
-        print(f"Error importando: {e}")
-        return False
-
-
-# --- Fallbacks a archivo local (cuando no hay MongoDB) ---
-
-MEMORY_FILE = "bot_memory.txt"
-
-def _leer_archivo_fallback() -> str:
-    try:
-        with open(MEMORY_FILE, 'r', encoding='utf-8') as f:
-            return f.read()
-    except:
-        return ""
-
-def _leer_archivo_lineas_fallback() -> list:
-    try:
-        with open(MEMORY_FILE, 'r', encoding='utf-8') as f:
-            return [l.strip() for l in f.readlines() if l.strip()]
-    except:
-        return []
-
-def _escribir_archivo_fallback(texto: str):
-    with open(MEMORY_FILE, 'a', encoding='utf-8') as f:
-        f.write(f"{texto}\n")
-
-def _reescribir_archivo_fallback(lineas: list):
-    with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
-        for l in lineas:
-            f.write(f"{l}\n")
