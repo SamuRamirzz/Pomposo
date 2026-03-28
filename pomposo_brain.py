@@ -102,7 +102,6 @@ class PomposoBrain:
             response_text = await chat_completion(
                 system_prompt=system_prompt + full_prompt,
                 messages=[{"role": "user", "content": user_text}],
-                model="google/gemini-2.0-flash-lite-preview-02-05:free",
                 response_format={"type": "json_object"}
             )
             

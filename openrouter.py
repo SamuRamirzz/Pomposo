@@ -6,10 +6,9 @@ import logging
 OR_KEY = os.getenv('OPENROUTER_API_KEY', '')
 
 # Modelos recomendados gratuitos
+# - iaminimax/minimax-m2.5:free (Elegido por el usuario)
 # - google/gemini-2.0-flash-lite-preview-02-05:free
-# - meta-llama/llama-3-8b-instruct:free
-# - deepseek/deepseek-chat:free (a veces colapsa)
-DEFAULT_MODEL = "google/gemini-2.0-flash-lite-preview-02-05:free"
+DEFAULT_MODEL = "iaminimax/minimax-m2.5:free"
 
 async def chat_completion(
     system_prompt: str,

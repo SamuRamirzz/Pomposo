@@ -342,7 +342,6 @@ class AgendaCog(commands.Cog):
                 response_text = await chat_completion(
                     system_prompt="Eres un asistente de agenda. Responde SOLO con un JSON estricto.",
                     messages=[{"role": "user", "content": prompt}],
-                    model="google/gemini-2.0-flash-lite-preview-02-05:free",
                     response_format={"type": "json_object"}
                 )
                 

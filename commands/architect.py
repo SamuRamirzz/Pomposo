@@ -213,7 +213,6 @@ class ArchitectCog(commands.Cog):
             response_text = await chat_completion(
                 system_prompt="Eres un clasificador JSON estricto.",
                 messages=[{"role": "user", "content": prompt}],
-                model="google/gemini-2.0-flash-lite-preview-02-05:free",
                 response_format={"type": "json_object"}
             )
             
@@ -247,7 +246,6 @@ class ArchitectCog(commands.Cog):
             response_text = await chat_completion(
                 system_prompt=ARCHITECT_PROMPT,
                 messages=[{"role": "user", "content": user_prompt}],
-                model="google/gemini-2.0-flash-lite-preview-02-05:free",
                 max_tokens=4000
             )
             
@@ -276,7 +274,6 @@ class ArchitectCog(commands.Cog):
             response_text = await chat_completion(
                 system_prompt="Eres el Arquitecto. Diagnostica y repara el error devolviendo el código corregido.",
                 messages=[{"role": "user", "content": prompt}],
-                model="google/gemini-2.0-flash-lite-preview-02-05:free",
                 max_tokens=4000
             )
             

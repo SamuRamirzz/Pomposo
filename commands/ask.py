@@ -257,9 +257,7 @@ class AskCog(commands.Cog):
                 
                 resp_text = await chat_completion(
                     system_prompt=sys_prompt,
-                    messages=messages_to_send,
-                    # Se usa modelo Lite Free que soporta Vision y es muy rápido
-                    model="google/gemini-2.0-flash-lite-preview-02-05:free"
+                    messages=messages_to_send
                 )
 
                 # 7. Guardar Historial
