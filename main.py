@@ -6,10 +6,15 @@ from discord.ext import commands
 from dotenv import load_dotenv
 import asyncio
 from fuzzywuzzy import fuzz, process
+from flask import Flask
+import threading
 
 # --- Carga de Secretos ---
 load_dotenv()
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
+
+# Mini servidor para Koyeb health check
+_app = Flask(__name__)
 
 # --- Constantes y Configuración ---
 BLOCKED_USERS_FILE = 'blocked_users.json'
@@ -19,6 +24,15 @@ blocked_user_ids = set()
 # Umbral de similitud para fuzzy matching (0-100)
 FUZZY_THRESHOLD = 60
 
+# --- Mini servidor para Koyeb health check ---
+@_app.route("/")
+def health():
+    return "Pomposo activo", 200
+
+def _run_server():
+    _app.run(host="0.0.0.0", port=8080)
+
+threading.Thread(target=_run_server, daemon=True).start()
 
 # --- Funciones de Configuración y Bloqueo ---
 def load_config():
