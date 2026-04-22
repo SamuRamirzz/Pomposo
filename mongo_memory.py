@@ -23,8 +23,8 @@ def _get_collection():
         _client = MongoClient(uri, serverSelectionTimeoutMS=10000)
         
         # Nombres ÚNICOS para no mezclar con bases de datos de clientes/totoriales en la nube
-        _db = _client['pomposo_core_db']
-        _collection = _db['pomposo_memories']
+        _db = _client['pomposo_bot']
+        _collection = _db['memory']
         
         # Test conexión
         _client.admin.command('ping')

@@ -2,7 +2,6 @@
 .env
 /pomposo-terminal/.env
 bot_config.json
-bot_memory.txt
 
 # Python
 __pycache__/
@@ -16,10 +15,6 @@ __pycache__/
 # Bot runtime files
 backups/
 staging/
-google-credentials.json
-
-# Media
-*.mp3
 
 # System
 .DS_Store

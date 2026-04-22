@@ -20,40 +20,40 @@ class InfoMenu(discord.ui.Select):
 
         options = [
             discord.SelectOption(
-                label=" Información General",
+                label="Información General",
                 description="Información sobre el bot",
-                emoji="",
+                emoji="ℹ️",
                 value="info",
                 default=True
             ),
             discord.SelectOption(
-                label=" Ayuda - Comandos",
+                label="Ayuda - Comandos",
                 description="Lista de comandos disponibles",
-                emoji="",
+                emoji="❓",
                 value="help"
             ),
             discord.SelectOption(
-                label=" Errores Comunes",
+                label="Errores Comunes",
                 description="Soluciones a problemas frecuentes",
-                emoji="",
+                emoji="⚠️",
                 value="errors"
             ),
             discord.SelectOption(
-                label=" Estadísticas",
+                label="Estadísticas",
                 description="Estadísticas del bot",
-                emoji="",
+                emoji="📊",
                 value="stats"
             ),
             discord.SelectOption(
-                label=" Enlaces Útiles",
+                label="Enlaces Útiles",
                 description="Links importantes y recursos",
-                emoji="",
+                emoji="🔗",
                 value="links"
             ),
             discord.SelectOption(
-                label=" Changelog",
+                label="Changelog",
                 description="Cambios de la última versión",
-                emoji="",
+                emoji="📝",
                 value="changelog"
             )
         ]

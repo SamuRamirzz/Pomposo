@@ -212,14 +212,18 @@ class AskCog(commands.Cog):
                 {PERSONALIDAD_BASE}
                 [TIEMPO REAL] {fecha}
                 [USUARIO] {user}
-                [MEMORIA] {memoria}
+                [MEMORIA PERSISTENTE - MUY IMPORTANTE]
+                La siguiente es tu memoria a largo plazo. Son hechos que DEBES recordar y aplicar en TODAS tus respuestas sin excepción. Nunca digas que no recuerdas algo que esté aquí:
+                {memoria}
                 [CHAT RECIENTE DEL CANAL]
                 {canal_context if canal_context else "(sin mensajes recientes)"}
                 {search_context}
                 [INSTRUCCIONES]
+                - La MEMORIA PERSISTENTE contiene hechos absolutos sobre ti y las personas del servidor. Úsala siempre.
+                - Nunca digas "no tengo memoria" o "no recuerdo" si el dato está en tu MEMORIA PERSISTENTE.
                 - Los RESULTADOS WEB (si los hay) son para que te informes de la actualidad mundial antes de responder.
-                - El chat reciente del canal es solo para que tengas contexto de la conversación. NO lo menciones a menos que sea directamente relevante a lo que te preguntan.
-                - Si alguien habla de otra persona del chat, puedes usar el contexto para entender de quién hablan.
+                - El chat reciente del canal es solo para contexto. NO lo menciones a menos que sea directamente relevante.
+                - Si alguien habla de otra persona del chat, usa el contexto para entender de quién hablan.
                 """
 
                 # 4. Historial Formato OpenRouter
