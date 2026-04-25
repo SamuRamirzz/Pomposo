@@ -3,7 +3,6 @@ import json
 import discord
 from discord import app_commands
 from discord.ext import commands
-from fuzzywuzzy import fuzz
 from datetime import datetime
 import pytz
 import aiohttp
@@ -11,13 +10,12 @@ import asyncio
 import base64
 from openrouter import chat_completion
 
-# Eliminar la dependencia de google.genai
-print(" Configuración inicializada (Usando OpenRouter API ilimitada)")
+print(" Configuración inicializada (Usando Gemini API)")
 
 # --- Constantes ---
 CONFIG_FILE = "bot_config.json"
 
-# --- Memoria (MongoDB con fallback a archivo local) ---
+# --- Memoria ---
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from mongo_memory import (
@@ -30,7 +28,6 @@ from mongo_memory import (
 
 # --- Personalidad ---
 def load_personality():
-    """Carga la personalidad desde ask_personalidad.txt"""
     try:
         with open("ask_personalidad.txt", 'r', encoding='utf-8') as f:
             return f.read()
@@ -43,14 +40,11 @@ PERSONALIDAD_BASE = load_personality()
 def save_config(data):
     with open(CONFIG_FILE, 'w') as f: json.dump(data, f, indent=4)
 
-
 def load_config():
     try:
-        with open(CONFIG_FILE, 'r') as f:
-            return json.load(f)
+        with open(CONFIG_FILE, 'r') as f: return json.load(f)
     except:
         return {"auto_channel_id": None}
-
 
 def obtener_tiempo_real():
     try:
@@ -60,12 +54,7 @@ def obtener_tiempo_real():
     except:
         return str(datetime.now())
 
-
 async def download_image(url: str) -> tuple:
-    """
-    Descarga una imagen desde una URL y retorna (bytes, mime_type).
-    Retorna (None, None) si falla.
-    """
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
@@ -78,109 +67,192 @@ async def download_image(url: str) -> tuple:
     return None, None
 
 
+# ─────────────────────────────────────────────
+# PROMPT DE DECISIÓN — La IA decide qué hacer
+# ─────────────────────────────────────────────
+DECISION_SYSTEM = """
+Eres el módulo de decisión de un bot de Discord llamado Pomposo.
+Tu única tarea es analizar el mensaje del usuario y decidir si quiere que el bot ejecute una acción interna.
+
+Las acciones disponibles son:
+- "recordar": el usuario quiere que el bot guarde algo en su memoria persistente.
+  Ejemplos: "guarda que me llamo Juan", "recuerda que odio el cilantro", "anota esto: ...", "no te olvides de que..."
+- "olvidar_texto": el usuario quiere que el bot borre algo específico de su memoria.
+  Ejemplos: "olvida lo de Juan", "borra que odio el cilantro", "elimina eso que dijiste de..."
+- "olvidar_chat": el usuario quiere borrar el historial de conversación del canal (no la memoria persistente).
+  Ejemplos: "borra el chat", "olvida nuestra conversación", "limpia el historial"
+- "setchannel": el usuario (owner) quiere activar auto-respuesta en el canal actual.
+  Ejemplos: "activa el canal", "pon el setchannel aquí", "auto-responde en este canal"
+- "unsetchannel": el usuario (owner) quiere desactivar la auto-respuesta.
+  Ejemplos: "desactiva el canal", "quita el setchannel", "para de auto-responder"
+- null: el usuario solo quiere hablar, preguntar algo, o no hay ninguna acción clara.
+
+Responde ÚNICAMENTE con un objeto JSON válido, sin texto extra, sin backticks, sin explicaciones.
+El formato es:
+{
+  "accion": "<recordar|olvidar_texto|olvidar_chat|setchannel|unsetchannel|null>",
+  "contenido": "<el texto exacto a recordar u olvidar, o null si no aplica>"
+}
+
+Ejemplos:
+- Mensaje: "recuerda que mi color favorito es el azul"
+  Respuesta: {"accion": "recordar", "contenido": "el color favorito del usuario es el azul"}
+
+- Mensaje: "olvida lo del color favorito"
+  Respuesta: {"accion": "olvidar_texto", "contenido": "color favorito"}
+
+- Mensaje: "borra la conversación"
+  Respuesta: {"accion": "olvidar_chat", "contenido": null}
+
+- Mensaje: "qué hora es?"
+  Respuesta: {"accion": null, "contenido": null}
+
+- Mensaje: "cuéntame un chiste"
+  Respuesta: {"accion": null, "contenido": null}
+"""
+
+
+async def decidir_accion(pregunta: str) -> dict:
+    """
+    Llama a la IA con el prompt de decisión para que analice la intención del usuario.
+    Retorna {"accion": ..., "contenido": ...}
+    """
+    try:
+        raw = await chat_completion(
+            system_prompt=DECISION_SYSTEM,
+            messages=[{"role": "user", "content": pregunta}],
+            temperature=0.0,   # 0 para máxima consistencia en clasificación
+            max_tokens=100
+        )
+        # Limpiar backticks por si acaso
+        raw = raw.strip().strip("```json").strip("```").strip()
+        return json.loads(raw)
+    except Exception as e:
+        print(f"Error en decidir_accion: {e}")
+        return {"accion": None, "contenido": None}
+
+
 class AskCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.conversation_cache = {}
         self.CACHE_LIMIT = 10
 
+    # ─────────────────────────────────────────────
+    # Listener: responder cuando alguien responde al bot
+    # ─────────────────────────────────────────────
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        # Ignorar mensajes del propio bot
+        if message.author.bot:
+            return
+
+        # Verificar si es una reply a un mensaje del bot
+        if (
+            message.reference is not None
+            and message.reference.resolved is not None
+            and isinstance(message.reference.resolved, discord.Message)
+            and message.reference.resolved.author.id == self.bot.user.id
+        ):
+            # Crear un contexto falso para reusar handle_ask
+            ctx = await self.bot.get_context(message)
+            pregunta = message.content.strip()
+            if pregunta:
+                await self.handle_ask(ctx, pregunta)
+
+    # ─────────────────────────────────────────────
+    # Slash command
+    # ─────────────────────────────────────────────
     @app_commands.command(name="ask", description="Habla con el pequeño pomposo")
-    @app_commands.describe(pregunta="Lo que quieres decirele a pomposo")
+    @app_commands.describe(pregunta="Lo que quieres decirle a pomposo")
     async def ask_slash(self, interaction: discord.Interaction, pregunta: str):
-        """Slash command para ask."""
         await self.ask(await self.bot.get_context(interaction), pregunta=pregunta)
 
+    # ─────────────────────────────────────────────
+    # Prefix command
+    # ─────────────────────────────────────────────
     @commands.command(name="ask", description="Habla con la IA.")
     async def ask(self, ctx: commands.Context, *, pregunta: str = ""):
-        # Se eliminó la dependencia de GEMINI_API_KEY local en ask.py
-        
-        pregunta_original = pregunta.strip()
-        pregunta_lower = pregunta_original.lower()
-
-        # Si no hay pregunta pero hay imágenes, usar texto por defecto
         if not pregunta and ctx.message.attachments:
             pregunta = "¿Qué ves en esta imagen?"
-            pregunta_original = pregunta.strip()
-            pregunta_lower = pregunta_original.lower()
-        palabra_clave = pregunta_lower.split(' ')[0] if pregunta_lower else ""
+        await self.handle_ask(ctx, pregunta)
 
-        score_recuerda = fuzz.ratio(palabra_clave, "recuerda")
-        score_guarda = fuzz.partial_ratio("guarda en tu memoria", pregunta_lower[:25])
-        score_olvida = fuzz.ratio(palabra_clave, "olvida")
-        score_setchannel = fuzz.ratio(palabra_clave, "setchannel")
-        score_unsetchannel = fuzz.ratio(palabra_clave, "unsetchannel")
+    # ─────────────────────────────────────────────
+    # Lógica principal (reutilizable por ask y on_message)
+    # ─────────────────────────────────────────────
+    async def handle_ask(self, ctx: commands.Context, pregunta: str):
+        pregunta_original = pregunta.strip()
+        if not pregunta_original:
+            return
 
-        UMBRAL_CONFIANZA = 80
         es_owner = ctx.author.id == self.bot.owner_id
 
-        # --- Comandos Simples ---
-        if score_recuerda > UMBRAL_CONFIANZA or score_guarda > UMBRAL_CONFIANZA:
-            if score_guarda > UMBRAL_CONFIANZA:
-                partes = pregunta_original.split(' ', 4)
-                texto = partes[4] if len(partes) > 4 else ""
+        # ── PASO 1: La IA decide si hay una acción interna ──
+        decision = await decidir_accion(pregunta_original)
+        accion   = decision.get("accion")
+        contenido = decision.get("contenido") or ""
+
+        # ── PASO 2: Ejecutar acción si la hay ──
+        if accion == "recordar":
+            if contenido.strip():
+                escribir_en_memoria(contenido.strip())
+                await ctx.reply(f"guardado: *{contenido.strip()}*")
             else:
-                partes = pregunta_original.split(' ', 1)
-                texto = partes[1] if len(partes) > 1 else ""
-            if texto.strip():
-                escribir_en_memoria(texto.strip())
-                await ctx.reply(f"guardado: *{texto.strip()}*")
-            else:
-                await ctx.send("¿qué guardo?", ephemeral=True)
+                await ctx.reply("eee... ¿qué guardo exactamente? 😅")
             return
 
-        if score_olvida > UMBRAL_CONFIANZA:
-            partes = pregunta_original.split(' ', 1)
-            texto = partes[1].strip() if len(partes) > 1 else ""
-            if "chat" in texto or "conversacion" in texto:
-                self.conversation_cache.pop(ctx.channel.id, None)
-                await ctx.reply("historial borrado.")
-                return
-            if texto:
-                borrado = olvidar_linea_especifica(texto)
-                await ctx.reply(f"olvidado: {borrado}" if borrado else "no encontré eso")
+        if accion == "olvidar_texto":
+            if contenido.strip():
+                borrado = olvidar_linea_especifica(contenido.strip())
+                await ctx.reply(f"olvidado: *{borrado}*" if borrado else "no encontré eso en mi memoria 🤔")
             else:
-                await ctx.send("¿qué olvido?", ephemeral=True)
+                await ctx.reply("¿qué olvido? sé más específico 😅")
             return
 
-        if es_owner and "channel" in palabra_clave:
+        if accion == "olvidar_chat":
+            self.conversation_cache.pop(ctx.channel.id, None)
+            await ctx.reply("historial de conversación borrado 🗑️")
+            return
+
+        if accion == "setchannel" and es_owner:
             cfg = load_config()
-            if "un" in palabra_clave:
-                cfg["auto_channel_id"] = None
-                self.bot.auto_reply_channel_id = None
-                await ctx.reply(" Auto-respuesta off.")
-            else:
-                cfg["auto_channel_id"] = ctx.channel.id
-                self.bot.auto_reply_channel_id = ctx.channel.id
-                await ctx.reply(f" Auto-respuesta en #{ctx.channel.name}")
+            cfg["auto_channel_id"] = ctx.channel.id
+            self.bot.auto_reply_channel_id = ctx.channel.id
             save_config(cfg)
+            await ctx.reply(f"auto-respuesta activada en #{ctx.channel.name} ✅")
             return
 
-        # --- INTELIGENCIA 24/7 CON SOPORTE DE IMÁGENES ---
+        if accion == "unsetchannel" and es_owner:
+            cfg = load_config()
+            cfg["auto_channel_id"] = None
+            self.bot.auto_reply_channel_id = None
+            save_config(cfg)
+            await ctx.reply("auto-respuesta desactivada ✅")
+            return
+
+        # ── PASO 3: Respuesta normal de la IA ──
         async with ctx.typing():
             try:
-                # 1. Contexto básico
-                memoria = leer_memoria_completa()
-                fecha = obtener_tiempo_real()
-                user = ctx.author.name.lower()
+                memoria  = leer_memoria_completa()
+                fecha    = obtener_tiempo_real()
+                user     = ctx.author.name.lower()
 
-                # 2. Contexto del canal (últimos 5 mensajes)
+                # Contexto del canal (últimos 5 mensajes)
                 canal_context = ""
                 try:
                     mensajes_recientes = []
                     async for msg in ctx.channel.history(limit=6):
                         if msg.id == ctx.message.id:
                             continue
-                        if msg.author.bot:
-                            mensajes_recientes.append(f"[BOT] {msg.author.name}: {msg.content[:150]}")
-                        else:
-                            mensajes_recientes.append(f"{msg.author.name}: {msg.content[:150]}")
+                        prefix = "[BOT]" if msg.author.bot else ""
+                        mensajes_recientes.append(f"{prefix} {msg.author.name}: {msg.content[:150]}")
                     if mensajes_recientes:
                         mensajes_recientes.reverse()
                         canal_context = "\n".join(mensajes_recientes[:5])
                 except Exception:
                     canal_context = ""
 
-                # 3. Determinar si necesitamos buscar en DuckDuckGo (RAG Text Search)
+                # DuckDuckGo RAG
                 SEARCH_KEYWORDS = [
                     'quien', 'quién', 'cuando', 'cuándo', 'donde', 'dónde',
                     'noticias', 'precio', 'clima', 'temperatura', 'ganó',
@@ -189,52 +261,49 @@ class AskCog(commands.Cog):
                     'cuanto', 'cuánto', 'cuántos', 'vale', 'cuesta',
                     'qué es', 'que es', 'define', 'significado',
                 ]
-                pregunta_lower_check = pregunta_original.lower()
-                needs_search = any(kw in pregunta_lower_check for kw in SEARCH_KEYWORDS)
-                
+                needs_search = any(kw in pregunta_original.lower() for kw in SEARCH_KEYWORDS)
                 search_context = ""
                 if needs_search:
-                    def _sync_ddg_text_search(q):
+                    def _sync_ddg(q):
                         from duckduckgo_search import DDGS
                         with DDGS() as ddgs:
                             return list(ddgs.text(q, region='wt-wt', safesearch='moderate', max_results=3))
-                    
                     try:
-                        search_results = await asyncio.to_thread(_sync_ddg_text_search, pregunta_original)
-                        if search_results:
-                            search_context = "[RESULTADOS WEB EN TIEMPO REAL PARA EL CONTEXTO]\n"
-                            for res in search_results:
-                                search_context += f"- {res.get('title')}: {res.get('body')}\n"
+                        results = await asyncio.to_thread(_sync_ddg, pregunta_original)
+                        if results:
+                            search_context = "[RESULTADOS WEB EN TIEMPO REAL]\n"
+                            for r in results:
+                                search_context += f"- {r.get('title')}: {r.get('body')}\n"
                     except Exception as e:
-                        print(f"Error DuckDuckGo text search: {e}")
+                        print(f"Error DuckDuckGo: {e}")
 
                 sys_prompt = f"""
-                {PERSONALIDAD_BASE}
-                [TIEMPO REAL] {fecha}
-                [USUARIO] {user}
-                [MEMORIA PERSISTENTE - MUY IMPORTANTE]
-                La siguiente es tu memoria a largo plazo. Son hechos que DEBES recordar y aplicar en TODAS tus respuestas sin excepción. Nunca digas que no recuerdas algo que esté aquí:
-                {memoria}
-                [CHAT RECIENTE DEL CANAL]
-                {canal_context if canal_context else "(sin mensajes recientes)"}
-                {search_context}
-                [INSTRUCCIONES]
-                - La MEMORIA PERSISTENTE contiene hechos absolutos sobre ti y las personas del servidor. Úsala siempre.
-                - Nunca digas "no tengo memoria" o "no recuerdo" si el dato está en tu MEMORIA PERSISTENTE.
-                - Los RESULTADOS WEB (si los hay) son para que te informes de la actualidad mundial antes de responder.
-                - El chat reciente del canal es solo para contexto. NO lo menciones a menos que sea directamente relevante.
-                - Si alguien habla de otra persona del chat, usa el contexto para entender de quién hablan.
-                """
+{PERSONALIDAD_BASE}
+[TIEMPO REAL] {fecha}
+[USUARIO] {user}
+[MEMORIA PERSISTENTE - MUY IMPORTANTE]
+La siguiente es tu memoria a largo plazo. Son hechos que DEBES recordar y aplicar en TODAS tus respuestas sin excepción. Nunca digas que no recuerdas algo que esté aquí:
+{memoria}
+[CHAT RECIENTE DEL CANAL]
+{canal_context if canal_context else "(sin mensajes recientes)"}
+{search_context}
+[INSTRUCCIONES]
+- La MEMORIA PERSISTENTE contiene hechos absolutos sobre ti y las personas del servidor. Úsala siempre.
+- Nunca digas "no tengo memoria" o "no recuerdo" si el dato está en tu MEMORIA PERSISTENTE.
+- Los RESULTADOS WEB (si los hay) son para informarte de la actualidad antes de responder.
+- El chat reciente del canal es solo para contexto. NO lo menciones a menos que sea directamente relevante.
+- Si alguien habla de otra persona del chat, usa el contexto para entender de quién hablan.
+- NO menciones que tienes un sistema de acciones o funciones internas. Actúa natural.
+"""
 
-                # 4. Historial Formato OpenRouter
                 cid = ctx.channel.id
                 hist_raw = self.conversation_cache.get(cid, [])
 
-                # 5. Mensaje Usuario + Imágenes Base64
+                # Construir payload con imágenes si las hay
                 user_text = f"{user}: {pregunta_original}"
                 content_payload = []
                 image_count = 0
-                
+
                 if ctx.message.attachments:
                     content_payload.append({"type": "text", "text": user_text})
                     for attachment in ctx.message.attachments:
@@ -243,30 +312,27 @@ class AskCog(commands.Cog):
                             if img_bytes:
                                 b64 = base64.b64encode(img_bytes).decode('utf-8')
                                 content_payload.append({
-                                    "type": "image_url", 
+                                    "type": "image_url",
                                     "image_url": {"url": f"data:{mime_type};base64,{b64}"}
                                 })
                                 image_count += 1
-                                print(f" Imagen adjuntada parseada a Base64 ({mime_type})")
-                
-                if image_count == 0:
-                    content_payload = user_text  # Si no hay imágenes, enviar string normal
 
-                # 6. Ejecutar IA
+                if image_count == 0:
+                    content_payload = user_text
+
                 messages_to_send = hist_raw + [{"role": "user", "content": content_payload}]
-                
+
                 resp_text = await chat_completion(
                     system_prompt=sys_prompt,
                     messages=messages_to_send
                 )
 
-                # 7. Guardar Historial
-                if cid not in self.conversation_cache: 
+                # Guardar historial
+                if cid not in self.conversation_cache:
                     self.conversation_cache[cid] = []
 
-                # Guardar solo la parte de texto puro en el historial (no las imágenes en base64 para ahorrar cache)
                 self.conversation_cache[cid].append({"role": "user", "content": user_text})
-                
+
                 if resp_text and resp_text.strip():
                     self.conversation_cache[cid].append({"role": "assistant", "content": resp_text})
 
@@ -278,21 +344,19 @@ class AskCog(commands.Cog):
                     else:
                         await ctx.reply(resp_text)
                 else:
-                    await ctx.reply("La IA no pudo generar una respuesta. Intenta de nuevo.")
+                    await ctx.reply("la ia no pudo generar una respuesta, intentalo de nuevo 😅")
 
             except Exception as e:
                 print(f"Error Ask: {e}")
                 import traceback
                 traceback.print_exc()
-                # Enviar mensaje limpio al usuario
                 error_embed = discord.Embed(
-                    title=" Error de IA",
-                    description=f"No pude contactar con la IA.",
+                    title="Error de IA",
+                    description="No pude contactar con la IA.",
                     color=discord.Color.red()
                 )
                 error_embed.set_footer(text="El sistema de auto-reparación ha sido notificado.")
                 await ctx.send(embed=error_embed)
-                # Re-lanzar para que on_command_error active el auto-diagnóstico
                 raise commands.CommandInvokeError(e)
 
 
