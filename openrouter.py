@@ -1,6 +1,6 @@
 """
 openrouter.py — Cliente de IA para Pomposo
-Ahora usa OpenRouter con MiniMax M2.5 (gratis, sin censura, sin límites)
+Ahora usa OpenRouter con GPT-OSS 120B y Gemma 4
 """
 
 import os
@@ -10,8 +10,8 @@ import logging
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '')
 OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 
-MODEL_TEXT = "minimax/minimax-m2.5:free"
-MODEL_VISION = "minimax/minimax-m2.5:free"
+MODEL_TEXT = "openai/gpt-oss-120b:free"
+MODEL_VISION = "google/gemma-4-31b-it:free"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("openrouter")
