@@ -295,7 +295,7 @@ async def me_estan_hablando(message: discord.Message, bot_instance) -> bool:
         respuesta = await chat_completion(
             system_prompt=prompt_sistema,
             messages=[{"role": "user", "content": message.content or "(mensaje sin texto)"}],
-            model="z-ai/glm-4.5-air:free",  # modelo ligero para clasificación
+            model="minimax/minimax-m2.5:free",  # modelo para clasificación
             temperature=0.0,
             max_tokens=5
         )
