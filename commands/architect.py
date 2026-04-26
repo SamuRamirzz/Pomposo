@@ -962,44 +962,60 @@ class ArchitectCog(commands.Cog):
 
     @owner_group.command(name="ok", description="Confirmar y aplicar código")
     async def ok_slash(self, interaction: discord.Interaction):
+        if interaction.user.id != self.bot.owner_id:
+            return await interaction.response.send_message("No tienes permiso.", ephemeral=True)
         ctx = await self.bot.get_context(interaction)
         await self.confirm_code(ctx)
 
     @owner_group.command(name="ver", description="Ver código pendiente")
     async def ver_slash(self, interaction: discord.Interaction):
+        if interaction.user.id != self.bot.owner_id:
+            return await interaction.response.send_message("No tienes permiso.", ephemeral=True)
         ctx = await self.bot.get_context(interaction)
         await self.view_code(ctx)
 
     @owner_group.command(name="no", description="Descartar código")
     async def no_slash(self, interaction: discord.Interaction):
+        if interaction.user.id != self.bot.owner_id:
+            return await interaction.response.send_message("No tienes permiso.", ephemeral=True)
         ctx = await self.bot.get_context(interaction)
         await self.discard_code(ctx)
 
     @owner_group.command(name="parches", description="Ver parches pendientes")
     async def parches_slash(self, interaction: discord.Interaction):
+        if interaction.user.id != self.bot.owner_id:
+            return await interaction.response.send_message("No tienes permiso.", ephemeral=True)
         ctx = await self.bot.get_context(interaction)
         await self.list_patches(ctx)
 
     @owner_group.command(name="fix", description="Aplicar un parche")
     @app_commands.describe(id="ID del parche")
     async def fix_slash(self, interaction: discord.Interaction, id: int):
+        if interaction.user.id != self.bot.owner_id:
+            return await interaction.response.send_message("No tienes permiso.", ephemeral=True)
         ctx = await self.bot.get_context(interaction)
         await self.apply_patch(ctx, patch_id=id)
 
     @owner_group.command(name="explica", description="Explicar y regenerar un parche")
     @app_commands.describe(id="ID del parche")
     async def explica_slash(self, interaction: discord.Interaction, id: int):
+        if interaction.user.id != self.bot.owner_id:
+            return await interaction.response.send_message("No tienes permiso.", ephemeral=True)
         ctx = await self.bot.get_context(interaction)
         await self.explain_error(ctx, patch_id=id)
 
     @owner_group.command(name="undo", description="Restaurar archivo desde backup")
     @app_commands.describe(archivo="Nombre del archivo a restaurar")
     async def undo_slash(self, interaction: discord.Interaction, archivo: str):
+        if interaction.user.id != self.bot.owner_id:
+            return await interaction.response.send_message("No tienes permiso.", ephemeral=True)
         ctx = await self.bot.get_context(interaction)
         await self.restore_backup(ctx, archivo=archivo)
 
     @owner_group.command(name="reiniciar", description="Reiniciar el bot")
     async def restart_slash(self, interaction: discord.Interaction):
+        if interaction.user.id != self.bot.owner_id:
+            return await interaction.response.send_message("No tienes permiso.", ephemeral=True)
         ctx = await self.bot.get_context(interaction)
         await self.restart_bot(ctx)
 
