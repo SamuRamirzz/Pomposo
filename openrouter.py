@@ -10,8 +10,8 @@ import logging
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '')
 OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 
-MODEL_TEXT = "minimax/minimax-text-01"
-MODEL_VISION = "minimax/minimax-text-01"
+MODEL_TEXT = "minimax/minimax-m2.5:free"
+MODEL_VISION = "minimax/minimax-m2.5:free"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("openrouter")
