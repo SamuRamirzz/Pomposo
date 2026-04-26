@@ -10,23 +10,18 @@ import asyncio
 import base64
 from openrouter import chat_completion
 
-print(" Configuración inicializada (Usando Gemini API)")
+print("Ask cargado (OpenRouter)")
 
-# --- Constantes ---
 CONFIG_FILE = "bot_config.json"
 
-# --- Memoria ---
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from mongo_memory import (
     leer_memoria_completa,
-    leer_memoria_lineas,
     escribir_en_memoria,
-    reescribir_memoria_lineas,
     olvidar_por_texto as olvidar_linea_especifica
 )
 
-# --- Personalidad ---
 def load_personality():
     try:
         with open("ask_personalidad.txt", 'r', encoding='utf-8') as f:
@@ -36,13 +31,14 @@ def load_personality():
 
 PERSONALIDAD_BASE = load_personality()
 
-# --- Config ---
 def save_config(data):
-    with open(CONFIG_FILE, 'w') as f: json.dump(data, f, indent=4)
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(data, f, indent=4)
 
 def load_config():
     try:
-        with open(CONFIG_FILE, 'r') as f: return json.load(f)
+        with open(CONFIG_FILE, 'r') as f:
+            return json.load(f)
     except:
         return {"auto_channel_id": None}
 
@@ -59,102 +55,88 @@ async def download_image(url: str) -> tuple:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
                 if resp.status == 200:
-                    image_bytes = await resp.read()
-                    content_type = resp.headers.get('Content-Type', 'image/jpeg')
-                    return image_bytes, content_type
+                    return await resp.read(), resp.headers.get('Content-Type', 'image/jpeg')
     except Exception as e:
         print(f"Error descargando imagen: {e}")
     return None, None
 
 
 # ─────────────────────────────────────────────
-# PROMPT DE DECISIÓN — La IA decide qué hacer
+# PROMPT DE DECISIÓN — Estricto, sin creatividad
 # ─────────────────────────────────────────────
-DECISION_SYSTEM = """
-Eres el módulo de decisión de un bot de Discord llamado Pomposo.
-Tu única tarea es analizar el mensaje del usuario y decidir si quiere que el bot ejecute una acción interna.
+DECISION_SYSTEM = """Eres un clasificador de intención para un bot de Discord. Analiza el mensaje y decide si el usuario está pidiendo EXPLÍCITAMENTE una de estas acciones.
 
-Las acciones disponibles son:
-- "recordar": el usuario quiere que el bot guarde algo en su memoria persistente.
-  Ejemplos: "guarda que me llamo Juan", "recuerda que odio el cilantro", "anota esto: ...", "no te olvides de que..."
-- "olvidar_texto": el usuario quiere que el bot borre algo específico de su memoria.
-  Ejemplos: "olvida lo de Juan", "borra que odio el cilantro", "elimina eso que dijiste de..."
-- "olvidar_chat": el usuario quiere borrar el historial de conversación del canal (no la memoria persistente).
-  Ejemplos: "borra el chat", "olvida nuestra conversación", "limpia el historial"
-- "setchannel": el usuario (owner) quiere activar auto-respuesta en el canal actual.
-  Ejemplos: "activa el canal", "pon el setchannel aquí", "auto-responde en este canal"
-- "unsetchannel": el usuario (owner) quiere desactivar la auto-respuesta.
-  Ejemplos: "desactiva el canal", "quita el setchannel", "para de auto-responder"
-- null: el usuario solo quiere hablar, preguntar algo, o no hay ninguna acción clara.
+REGLA MÁS IMPORTANTE: Si tienes CUALQUIER duda, responde null. Es mejor no hacer nada que hacer algo incorrecto.
 
-Responde ÚNICAMENTE con un objeto JSON válido, sin texto extra, sin backticks, sin explicaciones.
-El formato es:
-{
-  "accion": "<recordar|olvidar_texto|olvidar_chat|setchannel|unsetchannel|null>",
-  "contenido": "<el texto exacto a recordar u olvidar, o null si no aplica>"
-}
+Acciones (solo si el usuario lo pide MUY EXPLÍCITAMENTE):
+- "recordar": el usuario pide guardar algo. SOLO si usa palabras como: "recuerda", "guarda", "anota", "no olvides", "memoriza"
+- "olvidar_texto": el usuario pide borrar algo de la memoria. SOLO si usa: "olvida", "borra", "elimina" + algo específico
+- "olvidar_chat": el usuario pide borrar el historial. SOLO si dice: "borra el chat", "borra el historial", "olvida la conversación"
+- "setchannel": SOLO si dice exactamente "setchannel" o "activa el canal"
+- "unsetchannel": SOLO si dice exactamente "unsetchannel" o "desactiva el canal"
+- null: CUALQUIER OTRA COSA. Preguntas, comentarios, saludos, insultos, chistes, todo lo demás.
 
-Ejemplos:
-- Mensaje: "recuerda que mi color favorito es el azul"
-  Respuesta: {"accion": "recordar", "contenido": "el color favorito del usuario es el azul"}
+EJEMPLOS DE null (NO SON ACCIONES):
+- "y como consigo feria" → null
+- "que onda" → null  
+- "quiero saber algo" → null
+- "necesito ayuda" → null
+- "me llamo juan" → null (no pidió que lo guardes)
+- "odio el cilantro" → null (no pidió que lo guardes)
+- cualquier pregunta → null
 
-- Mensaje: "olvida lo del color favorito"
-  Respuesta: {"accion": "olvidar_texto", "contenido": "color favorito"}
-
-- Mensaje: "borra la conversación"
-  Respuesta: {"accion": "olvidar_chat", "contenido": null}
-
-- Mensaje: "qué hora es?"
-  Respuesta: {"accion": null, "contenido": null}
-
-- Mensaje: "cuéntame un chiste"
-  Respuesta: {"accion": null, "contenido": null}
-"""
+Responde SOLO con JSON válido, sin backticks:
+{"accion": "recordar|olvidar_texto|olvidar_chat|setchannel|unsetchannel|null", "contenido": "texto o null"}"""
 
 
-async def decidir_accion(pregunta: str) -> dict:
-    """
-    Llama a la IA con el prompt de decisión para que analice la intención del usuario.
-    Retorna {"accion": ..., "contenido": ...}
-    """
+async def decidir_accion(pregunta: str, username: str) -> dict:
+    """Detecta intención. Con username para incluirlo en lo que se guarda."""
     try:
         raw = await chat_completion(
             system_prompt=DECISION_SYSTEM,
             messages=[{"role": "user", "content": pregunta}],
-            temperature=0.0,   # 0 para máxima consistencia en clasificación
-            max_tokens=100
+            temperature=0.0,
+            max_tokens=80
         )
-        # Limpiar backticks por si acaso
         raw = raw.strip().strip("```json").strip("```").strip()
-        return json.loads(raw)
+        data = json.loads(raw)
+
+        # Si es recordar, incluir el nombre del usuario en el contenido
+        if data.get("accion") == "recordar" and data.get("contenido"):
+            data["contenido"] = f"[{username}] {data['contenido']}"
+
+        return data
     except Exception as e:
         print(f"Error en decidir_accion: {e}")
         return {"accion": None, "contenido": None}
+
+
+# Set global para trackear mensajes ya procesados y evitar doble respuesta
+_mensajes_procesados: set = set()
 
 
 class AskCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.conversation_cache = {}
-        self.CACHE_LIMIT = 10
 
     # ─────────────────────────────────────────────
-    # Listener: responder cuando alguien responde al bot
+    # Listener: replies al bot (sin duplicar con main.py)
     # ─────────────────────────────────────────────
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        # Ignorar mensajes del propio bot
         if message.author.bot:
             return
 
-        # Verificar si es una reply a un mensaje del bot
+        # Solo actuar si es una reply directa a un mensaje del bot
         if (
             message.reference is not None
             and message.reference.resolved is not None
             and isinstance(message.reference.resolved, discord.Message)
             and message.reference.resolved.author.id == self.bot.user.id
         ):
-            # Crear un contexto falso para reusar handle_ask
+            # Marcar como procesado para que main.py no lo procese también
+            _mensajes_procesados.add(message.id)
             ctx = await self.bot.get_context(message)
             pregunta = message.content.strip()
             if pregunta:
@@ -178,18 +160,24 @@ class AskCog(commands.Cog):
         await self.handle_ask(ctx, pregunta)
 
     # ─────────────────────────────────────────────
-    # Lógica principal (reutilizable por ask y on_message)
+    # Lógica principal
     # ─────────────────────────────────────────────
     async def handle_ask(self, ctx: commands.Context, pregunta: str):
         pregunta_original = pregunta.strip()
         if not pregunta_original:
             return
 
-        es_owner = ctx.author.id == self.bot.owner_id
+        # Evitar doble procesamiento — si el Cog ya lo manejó como reply, main.py no lo reprocesa
+        if ctx.message.id in _mensajes_procesados:
+            _mensajes_procesados.discard(ctx.message.id)
+            return
 
-        # ── PASO 1: La IA decide si hay una acción interna ──
-        decision = await decidir_accion(pregunta_original)
-        accion   = decision.get("accion")
+        es_owner = ctx.author.id == self.bot.owner_id
+        username = ctx.author.display_name or ctx.author.name
+
+        # ── PASO 1: Detectar intención ──
+        decision = await decidir_accion(pregunta_original, username)
+        accion = decision.get("accion")
         contenido = decision.get("contenido") or ""
 
         # ── PASO 2: Ejecutar acción si la hay ──
@@ -204,14 +192,14 @@ class AskCog(commands.Cog):
         if accion == "olvidar_texto":
             if contenido.strip():
                 borrado = olvidar_linea_especifica(contenido.strip())
-                await ctx.reply(f"olvidado: *{borrado}*" if borrado else "no encontré eso en mi memoria 🤔")
+                await ctx.reply(f"olvidado: *{borrado}*" if borrado else "no encontré eso 🤔")
             else:
                 await ctx.reply("¿qué olvido? sé más específico 😅")
             return
 
         if accion == "olvidar_chat":
             self.conversation_cache.pop(ctx.channel.id, None)
-            await ctx.reply("historial de conversación borrado 🗑️")
+            await ctx.reply("historial borrado 🗑️")
             return
 
         if accion == "setchannel" and es_owner:
@@ -230,12 +218,12 @@ class AskCog(commands.Cog):
             await ctx.reply("auto-respuesta desactivada ✅")
             return
 
-        # ── PASO 3: Respuesta normal de la IA ──
+        # ── PASO 3: Respuesta normal ──
         async with ctx.typing():
             try:
-                memoria  = leer_memoria_completa()
-                fecha    = obtener_tiempo_real()
-                user     = ctx.author.name.lower()
+                memoria = leer_memoria_completa()
+                fecha = obtener_tiempo_real()
+                user = username
 
                 # Contexto del canal (últimos 5 mensajes)
                 canal_context = ""
@@ -245,7 +233,7 @@ class AskCog(commands.Cog):
                         if msg.id == ctx.message.id:
                             continue
                         prefix = "[BOT]" if msg.author.bot else ""
-                        mensajes_recientes.append(f"{prefix} {msg.author.name}: {msg.content[:150]}")
+                        mensajes_recientes.append(f"{prefix}{msg.author.name}: {msg.content[:150]}")
                     if mensajes_recientes:
                         mensajes_recientes.reverse()
                         canal_context = "\n".join(mensajes_recientes[:5])
@@ -257,13 +245,11 @@ class AskCog(commands.Cog):
                     'quien', 'quién', 'cuando', 'cuándo', 'donde', 'dónde',
                     'noticias', 'precio', 'clima', 'temperatura', 'ganó',
                     'resultado', 'estreno', 'lanzamiento', 'actualidad',
-                    'hoy', 'ayer', 'mañana', 'fecha', 'hora',
-                    'cuanto', 'cuánto', 'cuántos', 'vale', 'cuesta',
-                    'qué es', 'que es', 'define', 'significado',
+                    'hoy', 'ayer', 'mañana', 'cuanto', 'cuánto', 'vale',
+                    'cuesta', 'qué es', 'que es', 'define', 'significado',
                 ]
-                needs_search = any(kw in pregunta_original.lower() for kw in SEARCH_KEYWORDS)
                 search_context = ""
-                if needs_search:
+                if any(kw in pregunta_original.lower() for kw in SEARCH_KEYWORDS):
                     def _sync_ddg(q):
                         from duckduckgo_search import DDGS
                         with DDGS() as ddgs:
@@ -271,54 +257,49 @@ class AskCog(commands.Cog):
                     try:
                         results = await asyncio.to_thread(_sync_ddg, pregunta_original)
                         if results:
-                            search_context = "[RESULTADOS WEB EN TIEMPO REAL]\n"
+                            search_context = "[RESULTADOS WEB]\n"
                             for r in results:
                                 search_context += f"- {r.get('title')}: {r.get('body')}\n"
                     except Exception as e:
                         print(f"Error DuckDuckGo: {e}")
 
-                sys_prompt = f"""
-{PERSONALIDAD_BASE}
-[TIEMPO REAL] {fecha}
-[USUARIO] {user}
-[MEMORIA PERSISTENTE - MUY IMPORTANTE]
-La siguiente es tu memoria a largo plazo. Son hechos que DEBES recordar y aplicar en TODAS tus respuestas sin excepción. Nunca digas que no recuerdas algo que esté aquí:
-{memoria}
-[CHAT RECIENTE DEL CANAL]
-{canal_context if canal_context else "(sin mensajes recientes)"}
-{search_context}
-[INSTRUCCIONES]
-- La MEMORIA PERSISTENTE contiene hechos absolutos sobre ti y las personas del servidor. Úsala siempre.
-- Nunca digas "no tengo memoria" o "no recuerdo" si el dato está en tu MEMORIA PERSISTENTE.
-- Los RESULTADOS WEB (si los hay) son para informarte de la actualidad antes de responder.
-- El chat reciente del canal es solo para contexto. NO lo menciones a menos que sea directamente relevante.
-- Si alguien habla de otra persona del chat, usa el contexto para entender de quién hablan.
-- NO menciones que tienes un sistema de acciones o funciones internas. Actúa natural.
-"""
+                sys_prompt = (
+                    f"{PERSONALIDAD_BASE}\n"
+                    f"[TIEMPO REAL] {fecha}\n"
+                    f"[USUARIO ACTUAL] {user}\n"
+                    f"[MEMORIA PERSISTENTE]\n{memoria}\n"
+                    f"[CHAT RECIENTE]\n{canal_context if canal_context else '(vacío)'}\n"
+                    f"{search_context}"
+                    "[INSTRUCCIONES]\n"
+                    "- Usa la MEMORIA PERSISTENTE siempre. Nunca digas que no recuerdas algo que esté ahí.\n"
+                    "- La memoria incluye el nombre del usuario entre corchetes [nombre], úsalo para saber de quién es cada dato.\n"
+                    "- Responde CORTO. Máximo 3 oraciones. Nada de párrafos largos.\n"
+                    "- No menciones que tienes funciones internas o memoria explícitamente.\n"
+                    "- No uses asteriscos para negritas, escribe normal.\n"
+                )
 
                 cid = ctx.channel.id
                 hist_raw = self.conversation_cache.get(cid, [])
 
-                # Construir payload con imágenes si las hay
+                # Payload con imágenes si las hay
                 user_text = f"{user}: {pregunta_original}"
-                content_payload = []
+                content_payload = user_text
                 image_count = 0
 
                 if ctx.message.attachments:
-                    content_payload.append({"type": "text", "text": user_text})
+                    parts = [{"type": "text", "text": user_text}]
                     for attachment in ctx.message.attachments:
                         if attachment.content_type and attachment.content_type.startswith('image/'):
                             img_bytes, mime_type = await download_image(attachment.url)
                             if img_bytes:
                                 b64 = base64.b64encode(img_bytes).decode('utf-8')
-                                content_payload.append({
+                                parts.append({
                                     "type": "image_url",
                                     "image_url": {"url": f"data:{mime_type};base64,{b64}"}
                                 })
                                 image_count += 1
-
-                if image_count == 0:
-                    content_payload = user_text
+                    if image_count > 0:
+                        content_payload = parts
 
                 messages_to_send = hist_raw + [{"role": "user", "content": content_payload}]
 
@@ -335,31 +316,31 @@ La siguiente es tu memoria a largo plazo. Son hechos que DEBES recordar y aplica
 
                 if resp_text and resp_text.strip():
                     self.conversation_cache[cid].append({"role": "assistant", "content": resp_text})
-
                     if len(self.conversation_cache[cid]) > 20:
                         self.conversation_cache[cid] = self.conversation_cache[cid][-20:]
 
+                    # Enviar en chunks si es muy largo
                     if len(resp_text) > 2000:
-                        await ctx.reply(resp_text[:2000])
+                        for i in range(0, len(resp_text), 2000):
+                            await ctx.reply(resp_text[i:i+2000])
                     else:
                         await ctx.reply(resp_text)
                 else:
-                    await ctx.reply("la ia no pudo generar una respuesta, intentalo de nuevo 😅")
+                    await ctx.reply("no pude generar respuesta, intentalo de nuevo 😅")
 
             except Exception as e:
                 print(f"Error Ask: {e}")
                 import traceback
                 traceback.print_exc()
-                error_embed = discord.Embed(
+                embed = discord.Embed(
                     title="Error de IA",
                     description="No pude contactar con la IA.",
                     color=discord.Color.red()
                 )
-                error_embed.set_footer(text="El sistema de auto-reparación ha sido notificado.")
-                await ctx.send(embed=error_embed)
+                await ctx.send(embed=embed)
                 raise commands.CommandInvokeError(e)
 
 
 async def setup(bot):
     await bot.add_cog(AskCog(bot))
-    print(" Commands.ask cargado.")
+    print("Commands.ask cargado.")
