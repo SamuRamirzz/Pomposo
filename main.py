@@ -278,16 +278,15 @@ async def me_estan_hablando(message: discord.Message, bot_instance) -> bool:
     historial = "\n".join(historial_lines) if historial_lines else "(sin historial previo)"
 
     prompt_sistema = (
-        'Eres un detector de intención. Tu única función es decidir si alguien le está hablando '
-        'a "Pomposo" en este chat de Discord.\n\n'
+        'Eres un detector de intención MUY ESTRICTO. Tu única función es decidir si el nuevo mensaje '
+        'está explícitamente dirigido a "Pomposo" en este chat de Discord.\n\n'
         f'Historial reciente del canal:\n{historial}\n\n'
         f'Mensaje nuevo de {message.author.name}:\n"{message.content}"\n\n'
-        f'Pomposo es el bot del servidor. Su ID de Discord es {bot_instance.user.id}.\n\n'
+        f'Pomposo es el bot del servidor. Su ID es {bot_instance.user.id}.\n\n'
         'Responde SOLO con una palabra: "SI" o "NO".\n'
-        '- SI: si el mensaje está dirigido a Pomposo, lo menciona implícitamente, le responde, '
-        'o claramente espera su participación\n'
-        '- NO: si es una conversación entre humanos donde Pomposo no tiene nada que ver\n\n'
-        'No expliques nada. Solo "SI" o "NO".'
+        '- SI: SOLO si el mensaje menciona a Pomposo por nombre, o si es una respuesta directa y evidente a una pregunta de Pomposo.\n'
+        '- NO: si es una conversación entre humanos. Si alguien dice "tienes razón", "sí", "jaja", etc. respondiendo a otro humano, es NO.\n'
+        'ANTE LA DUDA, O SI EL MENSAJE ES AMBIGUO, RESPONDE NO.\n'
     )
 
     try:
@@ -295,7 +294,7 @@ async def me_estan_hablando(message: discord.Message, bot_instance) -> bool:
         respuesta = await chat_completion(
             system_prompt=prompt_sistema,
             messages=[{"role": "user", "content": message.content or "(mensaje sin texto)"}],
-            model="openai/gpt-oss-120b:free",  # modelo para clasificación
+            model="minimax/minimax-m2.5:free",  # modelo para clasificación
             temperature=0.0,
             max_tokens=5
         )

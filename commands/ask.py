@@ -74,6 +74,7 @@ Acciones (solo si el usuario lo pide MUY EXPLÍCITAMENTE):
 - "olvidar_chat": el usuario pide borrar el historial. SOLO si dice: "borra el chat", "borra el historial", "olvida la conversación"
 - "setchannel": SOLO si dice exactamente "setchannel" o "activa el canal"
 - "unsetchannel": SOLO si dice exactamente "unsetchannel" o "desactiva el canal"
+- "bloquear": el usuario pide bloquear a alguien de interactuar con el bot. SOLO si usa: "bloquea a", "banea a", "ignora a" + el nombre o mención.
 - null: CUALQUIER OTRA COSA. Preguntas, comentarios, saludos, insultos, chistes, todo lo demás.
 
 EJEMPLOS DE null (NO SON ACCIONES):
@@ -86,7 +87,7 @@ EJEMPLOS DE null (NO SON ACCIONES):
 - cualquier pregunta → null
 
 Responde SOLO con JSON válido, sin backticks:
-{"accion": "recordar|olvidar_texto|olvidar_chat|setchannel|unsetchannel|null", "contenido": "texto o null"}"""
+{"accion": "recordar|olvidar_texto|olvidar_chat|setchannel|unsetchannel|bloquear|null", "contenido": "texto o null"}"""
 
 
 async def decidir_accion(pregunta: str, username: str) -> dict:
@@ -218,6 +219,20 @@ class AskCog(commands.Cog):
             await ctx.reply("auto-respuesta desactivada ✅")
             return
 
+        if accion == "bloquear":
+            if not es_owner:
+                await ctx.reply("no tienes permiso para ordenarme eso 🙄")
+                return
+            if contenido.strip():
+                block_cmd = self.bot.get_command("block")
+                if block_cmd:
+                    await ctx.invoke(block_cmd, user_query=contenido.strip())
+                else:
+                    await ctx.reply("no encontré el comando de bloqueo 😅")
+            else:
+                await ctx.reply("¿a quién bloqueo? dime un nombre.")
+            return
+
         # ── PASO 3: Respuesta normal ──
         async with ctx.typing():
             try:
@@ -286,10 +301,15 @@ class AskCog(commands.Cog):
                 content_payload = user_text
                 image_count = 0
 
-                if ctx.message.attachments:
+                all_attachments = list(ctx.message.attachments)
+                if ctx.message.reference and getattr(ctx.message.reference, 'resolved', None):
+                    if isinstance(ctx.message.reference.resolved, discord.Message):
+                        all_attachments.extend(ctx.message.reference.resolved.attachments)
+
+                if all_attachments:
                     parts = [{"type": "text", "text": user_text}]
-                    for attachment in ctx.message.attachments:
-                        if attachment.content_type and attachment.content_type.startswith('image/'):
+                    for attachment in all_attachments:
+                        if attachment.content_type and attachment.content_type.startswith(('image/', 'video/')):
                             img_bytes, mime_type = await download_image(attachment.url)
                             if img_bytes:
                                 b64 = base64.b64encode(img_bytes).decode('utf-8')
@@ -332,9 +352,10 @@ class AskCog(commands.Cog):
                 print(f"Error Ask: {e}")
                 import traceback
                 traceback.print_exc()
+                error_msg = str(e)[:500] if str(e) else "Error desconocido al procesar la petición."
                 embed = discord.Embed(
                     title="Error de IA",
-                    description="No pude contactar con la IA.",
+                    description=f"No pude contactar con la IA.\n\n**Detalle:** `{error_msg}`",
                     color=discord.Color.red()
                 )
                 await ctx.send(embed=embed)
