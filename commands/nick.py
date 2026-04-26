@@ -87,6 +87,7 @@ class NicknameCog(commands.Cog):
             return False, f" Error al cambiar el apodo: {e}"
 
     @commands.command(name="nick")
+    @commands.is_owner()
     async def nick_command(self, ctx, user_query: str, *, new_nickname: str):
         """
         Cambia el apodo de un usuario usando fuzzy matching.
@@ -151,6 +152,10 @@ class NicknameCog(commands.Cog):
     async def nick_slash(self, interaction: discord.Interaction, usuario: discord.Member, nuevo_apodo: str):
         """Cambia el apodo de un usuario usando slash command (efímero)."""
         
+        if interaction.user.id != self.bot.owner_id:
+            await interaction.response.send_message(" No tienes permiso para usar este comando.", ephemeral=True)
+            return
+
         # Respuesta efímera para que solo el ejecutor la vea
         await interaction.response.defer(ephemeral=True)
 
@@ -177,6 +182,8 @@ class NicknameCog(commands.Cog):
         """Maneja errores del comando de prefijo."""
         if isinstance(error, commands.MissingRequiredArgument):
             await ctx.send(" Uso correcto: `¿nick <usuario> <nuevo apodo>`")
+        elif isinstance(error, commands.NotOwner):
+            await ctx.send(" Solo el dueño del bot puede usar este comando.")
 
     @nick_slash.error
     async def nick_slash_error(self, interaction: discord.Interaction, error):
