@@ -16,3 +16,4 @@ edge-tts
 pymongo[srv]
 duckduckgo-search
 flask
+dateparser

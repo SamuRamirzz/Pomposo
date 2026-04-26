@@ -1,5 +1,3 @@
-# commands/img.py
-
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -180,8 +178,6 @@ class ImageSearchCog(commands.Cog):
             "q": query,
             "count": MAX_RESULTS,
             "safesearch": "off",    # Sin filtros
-            "search_lang": "es",
-            "country": "CO",
         }
         headers = {
             "Accept": "application/json",

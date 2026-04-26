@@ -1,25 +1,24 @@
 """
-openrouter.py  — Ahora usa Google Gemini en vez de Groq.
-El nombre del archivo se mantiene igual para no romper los otros comandos
-que hagan  `from openrouter import chat_completion`.
+openrouter.py — Cliente de IA para Pomposo
+Ahora usa OpenRouter con MiniMax M2.5 (gratis, sin censura, sin límites)
 """
 
 import os
 import aiohttp
 import logging
-import json
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '')
+OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 
-# Modelos Gemini
-MODEL_TEXT   = "gemini-3.1-flash-lite"   # Solo texto — rápido y gratuito
-MODEL_VISION = "gemini-3-flash-preview"        # Texto + imágenes (flash-lite no soporta visión)
+MODEL_TEXT = "minimax/minimax-text-01"
+MODEL_VISION = "minimax/minimax-text-01"
 
-GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("openrouter")
 
 
 def _has_images(messages: list) -> bool:
-    """Detecta si algún mensaje contiene imágenes en base64 o URL."""
+    """Detecta si algún mensaje contiene imágenes."""
     for msg in messages:
         content = msg.get("content", "")
         if isinstance(content, list):
@@ -28,106 +27,65 @@ def _has_images(messages: list) -> bool:
     return False
 
 
-def _convert_messages_to_gemini(system_prompt: str, messages: list) -> tuple[str, list]:
-    """
-    Convierte el historial formato OpenAI a formato Gemini.
-    Retorna (system_instruction, contents[])
-    """
-    contents = []
-
-    for msg in messages:
-        role = msg.get("role", "user")
-        content = msg.get("content", "")
-        gemini_role = "model" if role == "assistant" else "user"
-
-        # Contenido simple (string)
-        if isinstance(content, str):
-            contents.append({
-                "role": gemini_role,
-                "parts": [{"text": content}]
-            })
-            continue
-
-        # Contenido mixto (texto + imágenes)
-        if isinstance(content, list):
-            parts = []
-            for block in content:
-                if block.get("type") == "text":
-                    parts.append({"text": block["text"]})
-
-                elif block.get("type") == "image_url":
-                    url_data = block.get("image_url", {}).get("url", "")
-                    # Formato data:mime;base64,XXXX
-                    if url_data.startswith("data:"):
-                        header, b64data = url_data.split(",", 1)
-                        mime_type = header.split(":")[1].split(";")[0]
-                        parts.append({
-                            "inlineData": {
-                                "mimeType": mime_type,
-                                "data": b64data
-                            }
-                        })
-                    else:
-                        # URL externa — la mandamos como fileData
-                        parts.append({
-                            "fileData": {
-                                "mimeType": "image/jpeg",
-                                "fileUri": url_data
-                            }
-                        })
-            if parts:
-                contents.append({"role": gemini_role, "parts": parts})
-
-    return system_prompt, contents
-
-
 async def chat_completion(
     system_prompt: str,
     messages: list,
     model: str = None,
     temperature: float = 0.7,
     max_tokens: int = 2000,
-    response_format: dict = None   # Se ignora en Gemini (se maneja via prompt)
+    response_format: dict = None
 ) -> str:
-    if not GEMINI_API_KEY:
-        raise ValueError("Falta GEMINI_API_KEY en el .env")
+    """
+    Llama a OpenRouter con MiniMax M2.5.
+    """
+    if not OPENROUTER_API_KEY:
+        raise ValueError(
+            "Falta OPENROUTER_API_KEY en el .env\n"
+            "Consíguela en https://openrouter.ai (gratis)"
+        )
 
-    # Selección automática de modelo
     if model is None:
         model = MODEL_VISION if _has_images(messages) else MODEL_TEXT
 
-    logging.info(f"Gemini modelo seleccionado: {model}")
-
-    system_instruction, contents = _convert_messages_to_gemini(system_prompt, messages)
+    logger.info(f"OpenRouter modelo: {model}")
 
     payload = {
-        "system_instruction": {
-            "parts": [{"text": system_instruction}]
-        },
-        "contents": contents,
-        "generationConfig": {
-            "temperature": temperature,
-            "maxOutputTokens": max_tokens,
-        }
+        "model": model,
+        "messages": [{"role": "system", "content": system_prompt}] + messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
     }
 
-    url = f"{GEMINI_API_BASE}/{model}:generateContent?key={GEMINI_API_KEY}"
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://discord.com",
+        "X-Title": "Pomposo Bot",
+    }
 
     async with aiohttp.ClientSession() as session:
         async with session.post(
-            url,
-            headers={"Content-Type": "application/json"},
+            f"{OPENROUTER_BASE}/chat/completions",
+            headers=headers,
             json=payload,
-            timeout=aiohttp.ClientTimeout(total=45)
+            timeout=aiohttp.ClientTimeout(total=60)
         ) as resp:
             if resp.status == 200:
                 data = await resp.json()
                 try:
-                    return data["candidates"][0]["content"]["parts"][0]["text"]
+                    return data['choices'][0]['message']['content']
                 except (KeyError, IndexError) as e:
-                    logging.error(f"Gemini respuesta inesperada: {data}")
-                    raise Exception(f"No se pudo parsear respuesta de Gemini: {e}")
+                    logger.error(f"Respuesta inesperada: {data}")
+                    raise Exception(f"No se pudo parsear respuesta: {e}")
 
             error = await resp.text()
-            logging.error(f"Gemini error {resp.status} (modelo: {model}): {error}")
-            raise Exception(f"Gemini devolvió HTTP {resp.status}: {error[:300]}")
+            logger.error(f"OpenRouter error {resp.status}: {error[:300]}")
+
+            if resp.status == 401:
+                raise Exception("OPENROUTER_API_KEY inválida o expirada")
+            elif resp.status == 429:
+                raise Exception("Límite de rate limit. Espera un momento.")
+            elif resp.status == 500:
+                raise Exception("Servidor de OpenRouter en mantenimiento")
+            else:
+                raise Exception(f"OpenRouter HTTP {resp.status}")

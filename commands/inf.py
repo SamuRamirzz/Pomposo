@@ -5,7 +5,7 @@ import aiohttp
 import random
 
 # ---  CONFIGURACIÓN ---
-BOT_VERSION = "1.3.0v"
+BOT_VERSION = "2.0.0"
 BOT_NAME = "Pomposo"
 BOT_CREATOR = "Drake (drake_dev#0)"
 BOT_DESCRIPTION = "¡Ola! Soi Pomposo, una IA normalita pero con acceso a todo el internet, ¡jeje! Así que si me preguntas algo, te lo busco y te lo digo, pemdejo."
@@ -156,7 +156,7 @@ class InfoCog(commands.Cog):
             name=" Tipos de Comandos",
             value=(
                 " **Inteligencia Artificial** - Conversación y respuestas\n"
-                " **Búsqueda** - Imágenes y videos\n"
+                " **Búsqueda** - Imágenes a través de Brave Search\n"
                 " **Moderación** - Gestión de usuarios\n"
                 " **Diversión** - Interacciones divertidas\n"
                 " **Utilidades** - Herramientas varias\n\n"
@@ -188,8 +188,7 @@ class InfoCog(commands.Cog):
         commands_list = [
             (" `¿ask <pregunta>`",
              "Conversa con la IA. Puede responder preguntas, escribir código, crear historias y más."),
-            (" `¿img <búsqueda>`", "Busca imágenes en Google. Navega entre 25 resultados con botones."),
-            (" `¿yt <búsqueda>`", "Busca videos en YouTube. Navega entre 20 resultados con información detallada."),
+            (" `¿img <búsqueda>`", "Busca imágenes en Brave. Navega entre 25 resultados con botones."),
             (" `¿deal <juego>`", "Busca las mejores ofertas de un juego en tiendas online."),
             (" `¿agenda`", "Gestiona tareas y recordatorios inteligentes con IA."),
             (" `¿tts <personaje> <texto>`", "Genera audio TTS con voces de personajes usando FakeYou."),
@@ -249,10 +248,10 @@ class InfoCog(commands.Cog):
             name=" Error #1: Cuota de API Excedida",
             value=(
                 "**Mensaje:** `Se me acabaron los créditos de búsqueda...` o `API Key inválida o límite de cuota excedido`\n\n"
-                "**Causa:** El bot alcanzó el límite diario de búsquedas en Google/YouTube.\n\n"
+                "**Causa:** El bot alcanzó el límite de búsquedas en las APIs de Brave o Google.\n\n"
                 "**Solución:**\n"
                 "• Espera 24 horas para que se restablezca la cuota\n"
-                "• Los comandos `¿ask` y `¿dl` siguen funcionando normalmente\n"
+                "• Los comandos `¿ask` y `¿agenda` siguen funcionando normalmente\n"
                 "• Contacta al administrador del bot si es urgente"
             ),
             inline=False
@@ -365,8 +364,7 @@ class InfoCog(commands.Cog):
             name=" Configuración de APIs",
             value=(
                 "• [Google Cloud Console](https://console.cloud.google.com)\n"
-                "• [Custom Search Engine](https://programmablesearchengine.google.com)\n"
-                "• [YouTube API](https://console.cloud.google.com/apis/library/youtube.googleapis.com)\n"
+                "• [Brave Search API](https://api.search.brave.com)\n"
                 "• [TheCat API](https://thecatapi.com)\n"
                 "• [Tenor API](https://tenor.com/gifapi)"
             ),
@@ -400,10 +398,10 @@ class InfoCog(commands.Cog):
             name=" Tecnologías",
             value=(
                 "• **Discord.py** - Framework del bot\n"
-                "• **Google Cloud** - APIs de búsqueda\n"
+                "• **Google Gemini** - Cerebro de IA principal\n"
+                "• **Brave Search** - Motor de búsqueda de imágenes\n"
                 "• **Tenor API** - GIFs animados\n"
                 "• **FakeYou API** - TTS con voces de personajes\n"
-                "• **yt-dlp** - Descarga de videos\n"
                 "• **FFmpeg** - Procesamiento multimedia\n"
                 "• **mcstatus** - Status de Minecraft"
             ),
@@ -418,50 +416,48 @@ class InfoCog(commands.Cog):
         return embed
 
     def build_changelog_embed(self) -> discord.Embed:
-        """Construye el embed del changelog."""
+        """Construye el embed del changelog para la versión 2.0.0."""
         embed = discord.Embed(
-            title=" Changelog - Versión 1.3.0",
-            description="¡Nueva actualización con varias mejoras y un nuevo comando!",
+            title=" Changelog - Versión 2.0.0",
+            description="¡Pomposo ha evolucionado! Gran actualización de arquitectura y comportamiento.",
             color=discord.Color.gold()
         )
 
         # Nuevas funciones
         embed.add_field(
-            name=" Nuevas Funciones",
+            name=" Comportamiento Autónomo",
             value=(
-                "• **`¿tts <personaje> <texto>`** - ¡Nuevo comando TTS!\n"
-                "  Genera audio con voces de personajes como Sans, Hornet, SpongeBob y más.\n"
-                "  Usa fuzzy matching para encontrar voces similares.\n"
-                "  Incluye autocomplete en el slash command `/tts`."
+                "• **Detección de Intencionalidad**: Ahora uso IA para saber si me hablas sin mencionarme.\n"
+                "• **Participación Espontánea**: Puedo meterme en la plática si veo que está interesante.\n"
+                "• **Memoria Contextual**: Recuerdo mejor lo que pasó antes gracias a MongoDB."
             ),
             inline=False
         )
 
         # Mejoras
         embed.add_field(
-            name=" Mejoras",
+            name=" Arquitectura y Búsqueda",
             value=(
-                "• **Búsqueda de imágenes**: Ahora muestra 25 imágenes (antes 10)\n"
-                "• **Comando block**: Umbral de coincidencias ajustado para mayor precisión\n"
-                "• **Agenda**: Mensajes temporales ahora duran 18 segundos (antes 10)\n"
-                "• **Info**: Nueva sección de Changelog agregada"
+                "• **Migración a Brave API**: El comando `¿img` ahora usa Brave Search, más rápido y estable.\n"
+                "• **Arquitecto V3**: Sistema de auto-reparación mejorado con detección de parches sintácticos.\n"
+                "• **Adiós YouTube**: Se retiraron las funciones de video por inestabilidad del recurso externo."
             ),
             inline=False
         )
 
-        # Correcciones
+        # Ajustes
         embed.add_field(
             name=" Ajustes Técnicos",
             value=(
-                "• Optimización del fuzzy matching en comandos de moderación\n"
-                "• Mejor manejo de errores en comandos de búsqueda\n"
-                "• Actualización de tecnologías en la sección de enlaces"
+                "• Migración completa a modelos Gemini de Google para todas las funciones.\n"
+                "• Limpieza de archivos obsoletos y optimización de base de datos.\n"
+                "• Validación profunda de código antes de aplicar cambios con ¿ok."
             ),
             inline=False
         )
 
         embed.set_footer(
-            text=f"{BOT_NAME} v{BOT_VERSION} • Diciembre 2024",
+            text=f"{BOT_NAME} v{BOT_VERSION} • Abril 2026",
             icon_url=self.bot.user.display_avatar.url
         )
 
