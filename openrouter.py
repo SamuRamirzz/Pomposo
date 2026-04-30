@@ -16,13 +16,13 @@ OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '')
 OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 
 # Modelo principal de texto
-MODEL_TEXT = "inclusionai/ling-2.6-1t:free"
+MODEL_TEXT = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
 # Modelo de visión (imágenes y GIFs)
 MODEL_VISION = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
 # Modelo ligero para clasificación (me_estan_hablando, decidir_accion)
 MODEL_LIGHT = "google/gemma-3-12b-it:free"
 # Fallback si el modelo principal falla
-MODEL_FALLBACK = "google/gemma-4-31b-it:free"
+MODEL_FALLBACK = "google/gemma-4-26b-a4b-it:free"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("openrouter")
