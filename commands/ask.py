@@ -23,7 +23,7 @@ from mongo_memory import (
 )
 
 # Modelo con soporte de visión
-MODEL_VISION = "qwen/qwen2.5-vl-72b-instruct:free"  # Soporta imágenes, gratis
+MODEL_VISION = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"  # Soporta imágenes y GIFs perfectamente, gratis
 
 def load_personality():
     try:

@@ -18,19 +18,14 @@ OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 # Modelo principal de texto
 MODEL_TEXT = "inclusionai/ling-2.6-1t:free"
 # Modelo de visión (imágenes y GIFs)
-MODEL_VISION = "meta-llama/llama-3.2-11b-vision-instruct:free"
+MODEL_VISION = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
 # Modelo ligero para clasificación (me_estan_hablando, decidir_accion)
 MODEL_LIGHT = "google/gemma-3-12b-it:free"
-# Fallback si el modelo principal tiene rate limit
-MODEL_FALLBACK = "google/gemma-3-12b-it:free"
+# Fallback si el modelo principal falla
+MODEL_FALLBACK = "google/gemma-4-31b-it:free"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("openrouter")
-
-# Máximo de reintentos cuando hay 429
-MAX_RETRIES = 3
-# Segundos de espera entre reintentos (se multiplica por intento)
-RETRY_BASE_DELAY = 2.0
 
 
 def _has_images(messages: list) -> bool:
@@ -110,40 +105,35 @@ async def chat_completion(
     logger.info(f"OpenRouter modelo: {model}")
 
     async with aiohttp.ClientSession() as session:
-        # Intentar con el modelo principal, con reintentos
-        for intento in range(MAX_RETRIES):
-            result, status = await _call_api(
-                session, model, system_prompt, messages, temperature, max_tokens
-            )
+        # Intentar con el modelo principal una vez
+        result, status = await _call_api(
+            session, model, system_prompt, messages, temperature, max_tokens
+        )
 
-            if status == 200 and result:
-                return result
+        if status == 200 and result:
+            return result
 
-            if status == 429:
-                if intento < MAX_RETRIES - 1:
-                    wait = RETRY_BASE_DELAY * (intento + 1)
-                    logger.warning(f"Rate limit en {model}, reintentando en {wait}s (intento {intento+1}/{MAX_RETRIES})")
-                    await asyncio.sleep(wait)
-                    continue
-                else:
-                    # Agotados los reintentos con el modelo principal
-                    # Intentar con fallback si el modelo no era ya el fallback
-                    if model != MODEL_FALLBACK:
-                        logger.warning(f"Rate limit persistente en {model}, usando fallback: {MODEL_FALLBACK}")
-                        result, status = await _call_api(
-                            session, MODEL_FALLBACK, system_prompt, messages, temperature, max_tokens
-                        )
-                        if status == 200 and result:
-                            return result
-                    raise Exception(f"Rate limit persistente. Intenta en unos segundos.")
+        if status == 429:
+            # Intentar con fallback si falla por rate limit
+            if model != MODEL_FALLBACK:
+                logger.warning(f"Rate limit en {model}, usando fallback: {MODEL_FALLBACK}")
+                result, status = await _call_api(
+                    session, MODEL_FALLBACK, system_prompt, messages, temperature, max_tokens
+                )
+                if status == 200 and result:
+                    return result
+            logger.error(f"Rate limit persistente en {model} y fallback.")
+            return None # En lugar de lanzar excepcion, retornamos None para que avise al usuario suavemente
 
-            elif status == 401:
-                raise Exception("OPENROUTER_API_KEY inválida o expirada")
-            elif status == 400:
-                raise Exception(f"Request inválida para el modelo {model}")
-            elif status == 500:
-                raise Exception("Servidor de OpenRouter en mantenimiento")
-            else:
-                raise Exception(f"OpenRouter HTTP {status}")
-
-    raise Exception("No se pudo obtener respuesta después de todos los reintentos")
+        if status == 401:
+            logger.error("OPENROUTER_API_KEY inválida o expirada")
+            return None
+        if status == 400:
+            logger.error(f"Request inválida para el modelo {model}")
+            return None
+        if status == 500:
+            logger.error("Servidor de OpenRouter en mantenimiento")
+            return None
+        
+        logger.error(f"OpenRouter HTTP {status}")
+        return None
